@@ -1,0 +1,2697 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design Context Engine — 椅子データベース</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@300;400;500;600&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --nav-h: 56px;
+      --bg:        #F4EFE6;
+      --bg-card:   #FAF8F3;
+      --bg-white:  #FFFFFF;
+      --text:      #1A1918;
+      --text-sub:  #6B6859;
+      --accent:    #9B8B75;
+      --border:    #DDD5C5;
+      --border-lt: #EDE7DC;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Jost', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      font-weight: 300;
+      letter-spacing: 0.025em;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── APP SHELL ── */
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* ── NAV ── */
+    .app-nav {
+      flex-shrink: 0;
+      height: var(--nav-h);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2.5rem;
+      z-index: 50;
+    }
+
+    .nav-logo {
+      font-weight: 500;
+      font-size: 0.68rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .nav-links { display: flex; gap: 2px; }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.63rem;
+      font-weight: 400;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      padding: 0.45rem 0.9rem;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .nav-btn:hover { color: var(--text); }
+    .nav-btn.active { color: var(--text); background: var(--border-lt); }
+
+    .nav-tag {
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .sync-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.4s;
+    }
+    .sync-dot.loading { background: #C8A96E; animation: pulse-sync 1s infinite; }
+    .sync-dot.ok      { background: #7FAF8A; }
+    .sync-dot.err     { background: #C47B7B; }
+    @keyframes pulse-sync {
+      0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+
+    /* ── VIEWS CONTAINER ── */
+    .app-body { flex: 1; overflow: hidden; position: relative; }
+
+    .view { display: none; position: absolute; inset: 0; flex-direction: column; }
+    .view.active { display: flex; }
+
+    #v-landing.active,
+    #v-browse.active,
+    #v-text.active { overflow-y: auto; }
+
+    #v-sensory.active { overflow: hidden; }
+
+    /* ── SHARED ── */
+    .serif { font-family: 'Cormorant Garamond', 'Noto Serif JP', serif; }
+
+    .label {
+      font-size: 0.58rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+    }
+
+    .eyebrow {
+      font-size: 0.6rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 1.5rem;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1.75rem 0; }
+
+    /* ══════════════════════════════════════
+       LANDING
+    ══════════════════════════════════════ */
+    .landing-wrap { padding: 4rem 3rem 2rem; }
+
+    .landing-h1 {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: clamp(2.5rem, 4.5vw, 4rem);
+      font-weight: 300;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      margin-bottom: 1.5rem;
+    }
+
+    .landing-h1 em { font-style: italic; color: var(--accent); }
+
+    .landing-desc {
+      font-size: 0.875rem;
+      line-height: 1.9;
+      color: var(--text-sub);
+      max-width: 480px;
+      margin-bottom: 3rem;
+    }
+
+    .entry-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      background: var(--border);
+      border: 1px solid var(--border);
+      gap: 1px;
+      max-width: 860px;
+      margin: 0 3rem 4rem;
+    }
+
+    .entry-card {
+      background: var(--bg-card);
+      padding: 2.5rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .entry-card:hover { background: var(--bg-white); }
+
+    .ec-glyph {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      font-weight: 300;
+      color: var(--accent);
+      margin-bottom: 1.25rem;
+      line-height: 1;
+    }
+
+    .ec-title {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 1.35rem;
+      font-weight: 300;
+      margin-bottom: 0.75rem;
+    }
+
+    .ec-desc {
+      font-size: 0.775rem;
+      line-height: 1.85;
+      color: var(--text-sub);
+      margin-bottom: 1.5rem;
+    }
+
+    .ec-cta {
+      font-size: 0.6rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    /* ══════════════════════════════════════
+       SENSORY SEARCH
+    ══════════════════════════════════════ */
+    .sensory-split { flex: 1; display: flex; overflow: hidden; }
+
+    /* -- Sliders column -- */
+    .sliders-col {
+      width: 350px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sc-head {
+      padding: 1.75rem 2rem 1.25rem;
+      border-bottom: 1px solid var(--border-lt);
+      flex-shrink: 0;
+    }
+
+    .sc-head-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem;
+      font-weight: 300;
+      margin-bottom: 0.2rem;
+    }
+
+    .sc-head-sub { font-size: 0.7rem; color: var(--text-sub); }
+
+    .presets-wrap {
+      padding: 1rem 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      border-bottom: 1px solid var(--border-lt);
+      flex-shrink: 0;
+    }
+
+    .preset-btn {
+      background: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.58rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      padding: 0.28rem 0.65rem;
+      transition: all 0.2s;
+    }
+
+    .preset-btn:hover,
+    .preset-btn.active {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+
+    .sliders-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+    }
+
+    .slider-item { margin-bottom: 1.1rem; }
+
+    /* ── Free search ── */
+    .free-search-wrap {
+      padding: 0.75rem 2rem;
+      border-bottom: 1px solid var(--border-lt);
+      flex-shrink: 0;
+    }
+
+    .fs-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      margin-bottom: 0.45rem;
+    }
+
+    .fs-input-row { display: flex; }
+
+    .fs-input {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-right: none;
+      padding: 0.45rem 0.7rem;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 300;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .fs-input::placeholder { color: var(--text-sub); }
+    .fs-input:focus { border-color: var(--accent); }
+
+    .fs-btn {
+      background: var(--text);
+      color: var(--bg);
+      border: 1px solid var(--text);
+      padding: 0.45rem 0.85rem;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .fs-btn:hover { background: var(--accent); border-color: var(--accent); }
+
+    .fs-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; min-height: 1.2rem; }
+
+    .fs-tag {
+      font-size: 0.56rem;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 0.1rem 0.38rem;
+    }
+
+    .fs-tag-miss { color: var(--text-sub); border-color: var(--border); }
+
+    .fs-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; }
+
+    .fs-ai-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.52rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      padding: 0.2rem 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.2s;
+    }
+    .fs-ai-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .fs-ai-toggle.ai-on { border-color: var(--accent); color: var(--accent); }
+
+    .fs-ai-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .fs-ai-dot.on { background: #6aab6a; }
+
+    .fs-ai-panel {
+      display: none;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px dashed var(--border);
+    }
+    .fs-ai-panel.open { display: block; }
+
+    .fs-ai-desc {
+      font-size: 0.62rem;
+      line-height: 1.7;
+      color: var(--text-sub);
+      margin-bottom: 0.6rem;
+    }
+
+    .fs-ai-row { display: flex; gap: 0; margin-bottom: 0.4rem; }
+
+    .fs-ai-key {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-right: none;
+      padding: 0.38rem 0.6rem;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.68rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .fs-ai-key:focus { border-color: var(--accent); }
+    .fs-ai-key::placeholder { color: var(--border); }
+
+    .fs-ai-save {
+      background: var(--accent);
+      color: var(--bg);
+      border: 1px solid var(--accent);
+      padding: 0.38rem 0.75rem;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .fs-ai-save:hover { background: var(--text); border-color: var(--text); }
+
+    .fs-ai-links { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem; }
+
+    .fs-ai-link {
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .fs-ai-link:hover { text-decoration: underline; }
+
+    .fs-ai-clear {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.55rem;
+      color: var(--text-sub);
+      padding: 0;
+      text-decoration: underline;
+    }
+    .fs-ai-clear:hover { color: var(--text); }
+
+    .fs-ai-status {
+      font-size: 0.58rem;
+      color: var(--text-sub);
+      min-height: 1rem;
+    }
+    .fs-ai-status.ok { color: #6aab6a; }
+    .fs-ai-status.err { color: #c0574e; }
+
+    .fs-btn.loading { opacity: 0.5; pointer-events: none; }
+
+    @keyframes fs-spin { to { transform: rotate(360deg); } }
+    .fs-tag-loading {
+      color: var(--text-sub);
+      border-color: var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .fs-tag-conf {
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      color: var(--text-sub);
+      border: 1px solid var(--border-lt);
+      padding: 0.1rem 0.4rem;
+    }
+
+    /* ── AI補足カード ── */
+    .ai-supp-card {
+      margin: 1.5rem 0 0.25rem;
+      padding: 1.25rem 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+    }
+    .ai-supp-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .ai-supp-icon {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1rem;
+      color: var(--accent);
+    }
+    .ai-supp-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .ai-supp-text {
+      font-size: 0.82rem;
+      line-height: 1.9;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+    }
+    .ai-supp-note {
+      font-size: 0.58rem;
+      color: var(--text-sub);
+      letter-spacing: 0.05em;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border-lt);
+    }
+
+    .fs-tag-loading::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border: 1.5px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: fs-spin 0.7s linear infinite;
+    }
+
+    .slider-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.55rem;
+    }
+
+    .slider-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .sl-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.85rem;
+      color: var(--accent);
+    }
+
+    .sl-name { font-size: 0.7rem; color: var(--text); letter-spacing: 0.03em; }
+
+    .sl-val {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.05rem;
+      font-weight: 300;
+      color: var(--text);
+      min-width: 2rem;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, var(--text) 0%, var(--text) var(--pct, 50%), var(--border) var(--pct, 50%), var(--border) 100%);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      background: var(--bg);
+      border: 2px solid var(--text);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    input[type="range"]:hover::-webkit-slider-thumb,
+    input[type="range"]:active::-webkit-slider-thumb {
+      background: var(--text);
+      transform: scale(1.15);
+    }
+
+    .slider-hints {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.4rem;
+    }
+
+    .sh { font-size: 0.56rem; letter-spacing: 0.08em; color: var(--text-sub); }
+
+    .sc-foot {
+      padding: 1.1rem 2rem;
+      border-top: 1px solid var(--border-lt);
+      flex-shrink: 0;
+    }
+
+    .btn-reset {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      padding: 0.6rem;
+      transition: all 0.2s;
+    }
+
+    .btn-reset:hover { background: var(--border-lt); color: var(--text); }
+
+    /* -- Results column -- */
+    .results-col { flex: 1; overflow-y: auto; }
+
+    .rc-head {
+      padding: 1.5rem 2.5rem 1.25rem;
+      border-bottom: 1px solid var(--border-lt);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 5;
+    }
+
+    .rc-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.15rem;
+      font-weight: 300;
+    }
+
+    /* Golden cards */
+    .golden-wrap { padding: 1.75rem 2.5rem; border-bottom: 1px solid var(--border); }
+
+    .golden-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      margin-top: 1rem;
+    }
+
+    .gc {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: background 0.25s;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .gc:hover { background: var(--bg-white); }
+
+    .gc-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .gc-rank-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.9rem;
+      color: var(--text-sub);
+    }
+
+    .gc-tag {
+      font-size: 0.52rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 0.12rem 0.38rem;
+    }
+
+    .gc-type {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 1.05rem;
+      font-weight: 400;
+      margin-bottom: 0.15rem;
+      line-height: 1.2;
+    }
+
+    .gc-type-en {
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      margin-bottom: 1rem;
+    }
+
+    .gc-name {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 1.15rem;
+      font-weight: 400;
+      margin-bottom: 0.15rem;
+    }
+
+    .gc-designer { font-size: 0.67rem; color: var(--text-sub); letter-spacing: 0.04em; }
+
+    .match-block { margin-top: auto; padding-top: 1rem; }
+
+    .match-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.35rem;
+    }
+
+    .match-label { font-size: 0.58rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-sub); }
+
+    .match-pct {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-weight: 300;
+      color: var(--text);
+    }
+
+    .match-bar-track { height: 1px; background: var(--border); position: relative; }
+
+    .match-bar {
+      position: absolute;
+      top: -1px;
+      left: 0;
+      height: 3px;
+      background: var(--text);
+      transition: width 0.45s ease;
+    }
+
+    .gc-link {
+      display: block;
+      margin-top: 0.9rem;
+      font-size: 0.58rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    /* Others list */
+    .others-wrap { padding: 1.5rem 2.5rem 3rem; }
+
+    .or-row {
+      display: grid;
+      grid-template-columns: 2rem 1fr 4.5rem 4rem 2.5rem;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid var(--border-lt);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .or-row:hover { background: var(--bg-card); padding-left: 0.5rem; padding-right: 0.5rem; margin: 0 -0.5rem; }
+
+    .or-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.95rem;
+      color: var(--text-sub);
+      text-align: center;
+    }
+
+    .or-name {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 0.95rem;
+    }
+
+    .or-designer { font-size: 0.66rem; color: var(--text-sub); }
+
+    .or-match-wrap { display: flex; align-items: center; gap: 0.4rem; }
+
+    .or-bar-track { flex: 1; height: 1px; background: var(--border); position: relative; }
+
+    .or-bar {
+      position: absolute;
+      top: -0.5px;
+      left: 0;
+      height: 2px;
+      background: var(--accent);
+      transition: width 0.4s ease;
+    }
+
+    .or-pct { font-size: 0.65rem; color: var(--text-sub); min-width: 2rem; text-align: right; }
+
+    .or-link { font-size: 0.58rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); }
+
+    /* ══════════════════════════════════════
+       BROWSE
+    ══════════════════════════════════════ */
+    .browse-header {
+      padding: 2.5rem 3rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ph-title {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 2rem;
+      font-weight: 300;
+      letter-spacing: -0.01em;
+    }
+
+    .browse-controls {
+      padding: 1rem 3rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-lt);
+    }
+
+    .sort-btns { display: flex; gap: 2px; }
+
+    .sort-btn {
+      background: none;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      padding: 0.3rem 0.7rem;
+      transition: all 0.2s;
+    }
+
+    .sort-btn:hover, .sort-btn.active {
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .browse-table { padding: 0 3rem 4rem; }
+
+    .br-row {
+      display: grid;
+      grid-template-columns: 2.5rem 44px 1fr 9rem 4rem 5rem 9rem;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border-lt);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .br-row:hover { background: var(--bg-card); padding-left: 0.5rem; padding-right: 0.5rem; margin: 0 -0.5rem; }
+
+    .br-idx {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.95rem;
+      color: var(--text-sub);
+      text-align: center;
+    }
+
+    .br-name {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 1rem;
+    }
+
+    .br-designer { font-size: 0.68rem; color: var(--text-sub); }
+
+    .br-year { font-size: 0.7rem; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+
+    .br-origin { font-size: 0.68rem; color: var(--text-sub); }
+
+    .br-actions { display: flex; gap: 4px; justify-content: flex-end; }
+
+    .btn-xs {
+      background: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.55rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      padding: 0.25rem 0.55rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-xs:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+    /* ══════════════════════════════════════
+       TEXT SEARCH
+    ══════════════════════════════════════ */
+    .text-search-header {
+      padding: 2.5rem 3rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .text-bar { padding: 1.5rem 3rem; border-bottom: 1px solid var(--border-lt); }
+
+    .text-input-wrap { max-width: 520px; position: relative; }
+
+    .text-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 0.875rem 1.25rem;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 300;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .text-input::placeholder { color: var(--text-sub); }
+    .text-input:focus { border-color: var(--accent); }
+
+    .text-results-wrap { padding: 1.5rem 3rem 4rem; }
+
+    .tr-row {
+      display: grid;
+      grid-template-columns: 1fr 9rem 4rem 2.5rem;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border-lt);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .tr-row:hover { background: var(--bg-card); padding-left: 0.5rem; padding-right: 0.5rem; margin: 0 -0.5rem; }
+
+    .tr-name {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 1rem;
+    }
+
+    .tr-designer { font-size: 0.68rem; color: var(--text-sub); }
+
+    .tr-year { font-size: 0.7rem; color: var(--text-sub); }
+
+    .tr-link { font-size: 0.58rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); text-align: right; }
+
+    .empty-msg {
+      padding: 3rem 0;
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+
+    /* ══════════════════════════════════════
+       DETAIL PANEL
+    ══════════════════════════════════════ */
+    #detail-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26,25,24,0.42);
+      z-index: 200;
+      cursor: pointer;
+    }
+
+    #detail-overlay.open { display: block; }
+
+    #detail-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(560px, 100vw);
+      background: var(--bg);
+      overflow-y: auto;
+      z-index: 201;
+      transform: translateX(100%);
+      transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    #detail-panel.open { transform: translateX(0); }
+
+    .dp-nav {
+      padding: 1.25rem 1.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 1;
+      flex-shrink: 0;
+    }
+
+    .dp-nav-label { font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-sub); }
+
+    .btn-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      transition: color 0.2s;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-close:hover { color: var(--text); }
+
+    .dp-body { padding: 2.5rem 2rem 4rem; }
+
+    .dp-name {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 2.5rem;
+      font-weight: 300;
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+    }
+
+    .dp-meta {
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      margin-bottom: 2rem;
+    }
+
+    .dp-radar { display: flex; justify-content: center; padding: 0.5rem 0; }
+
+    .dp-axes { display: flex; flex-direction: column; gap: 1rem; }
+
+    .dp-axis-row {
+      display: grid;
+      grid-template-columns: 1.5rem 8.5rem 1fr 2.5rem;
+      align-items: center;
+      gap: 0.7rem;
+      font-size: 0.68rem;
+    }
+
+    .dp-ax-idx { font-family: 'Cormorant Garamond', serif; font-size: 0.85rem; color: var(--accent); text-align: center; }
+    .dp-ax-name { color: var(--text-sub); }
+
+    .dp-ax-track { height: 1px; background: var(--border); position: relative; }
+    .dp-ax-fill { position: absolute; top: -1px; left: 0; height: 3px; background: var(--text); transition: width 0.9s ease; }
+
+    .dp-ax-val { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+
+    .dp-group-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin: 1.5rem 0 0.65rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border-lt);
+    }
+    .dp-group-head:first-child { margin-top: 0; }
+    .dp-group-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .dp-group-en {
+      font-size: 0.52rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+    }
+
+    .dp-reason {
+      font-size: 0.63rem;
+      color: var(--text-sub);
+      line-height: 1.55;
+      margin: 0.2rem 0 0.65rem 2.2rem;
+      padding-left: 0.6rem;
+      border-left: 2px solid var(--border-lt);
+      font-style: italic;
+    }
+
+    .dp-contradiction {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--text);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .dp-ct-label {
+      font-size: 0.56rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      margin-bottom: 0.5rem;
+    }
+    .dp-ct-equation {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.15rem;
+      font-weight: 300;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.02em;
+    }
+    .dp-ct-bar-track {
+      height: 2px;
+      background: var(--border);
+      position: relative;
+      margin-bottom: 0.5rem;
+    }
+    .dp-ct-bar {
+      position: absolute;
+      top: -1px;
+      height: 4px;
+      background: var(--accent);
+      transition: width 0.6s ease, left 0.6s ease;
+      min-width: 3px;
+    }
+    .dp-ct-insight {
+      font-size: 0.63rem;
+      color: var(--text-sub);
+      font-style: italic;
+    }
+
+    .dp-desc { font-size: 0.875rem; line-height: 2; color: var(--text-sub); }
+
+    .btn-similar {
+      width: 100%;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      padding: 0.875rem 1.5rem;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 1.75rem;
+    }
+
+    .btn-similar:hover { background: var(--accent); }
+
+    /* match highlight in detail */
+    .dp-match-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: var(--bg-card);
+      border-left: 2px solid var(--accent);
+      margin-bottom: 1.75rem;
+    }
+
+    .dp-match-label { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-sub); }
+
+    .dp-match-val {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.75rem;
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    /* ── result list (sensory) ── */
+    .rl-top-card {
+      margin: 1.5rem 0 0.5rem;
+      padding: 1.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .rl-top-card:hover { background: var(--bg-white); }
+
+    .rl-top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .rl-rank-big {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3.5rem;
+      font-weight: 300;
+      color: var(--border);
+      line-height: 1;
+    }
+
+    .rl-match-big {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.25rem;
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .rl-match-big-label {
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      margin-top: 0.2rem;
+      text-align: right;
+    }
+
+    .rl-top-name {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 2rem;
+      font-weight: 300;
+      line-height: 1.1;
+      margin-bottom: 0.3rem;
+    }
+
+    .rl-top-meta { font-size: 0.7rem; color: var(--text-sub); letter-spacing: 0.06em; }
+
+    .rl-top-bar-track {
+      height: 2px;
+      background: var(--border);
+      margin-top: 1.25rem;
+      position: relative;
+    }
+    .rl-top-bar { position: absolute; top: 0; left: 0; height: 2px; background: var(--text); transition: width 0.35s ease; }
+
+    .golden-badges { display: flex; gap: 0.4rem; margin-top: 0.75rem; }
+
+    .gbadge {
+      font-size: 0.52rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 0.15rem 0.45rem;
+    }
+
+    .rl-row {
+      display: grid;
+      grid-template-columns: 2.25rem 44px 1fr auto 4.5rem 2rem;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid var(--border-lt);
+      cursor: pointer;
+      transition: background 0.15s, padding 0.15s;
+    }
+    .rl-row:hover { background: var(--bg-card); padding-left: 0.5rem; padding-right: 0.5rem; margin: 0 -0.5rem; }
+
+    .rl-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1rem;
+      color: var(--text-sub);
+      text-align: center;
+    }
+
+    .rl-name {
+      font-family: 'Cormorant Garamond', 'Noto Serif JP', serif;
+      font-size: 0.95rem;
+    }
+    .rl-designer { font-size: 0.65rem; color: var(--text-sub); }
+
+    .rl-badge-wrap { display: flex; gap: 0.3rem; }
+
+    .rl-gbadge {
+      font-size: 0.48rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 0.1rem 0.3rem;
+      white-space: nowrap;
+    }
+
+    .rl-match-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; }
+    .rl-pct { font-size: 0.72rem; color: var(--text); font-variant-numeric: tabular-nums; }
+    .rl-bar-track { width: 60px; height: 1px; background: var(--border); position: relative; }
+    .rl-bar { position: absolute; top: -0.5px; left: 0; height: 2px; background: var(--accent); transition: width 0.3s ease; }
+
+    .rl-link { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+
+    /* ── Chair illustrations ── */
+    .chair-illust-wrap {
+      width: 100%;
+      aspect-ratio: 1402 / 1122;
+      background: var(--bg-card);
+      border: 1px solid var(--border-lt);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 1.5rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .chair-illust-wrap:hover { border-color: var(--accent); }
+    .chair-illust-wrap.drag-over {
+      border: 2px dashed var(--accent);
+      background: rgba(155,139,117,0.08);
+    }
+    .illust-drop-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      background: rgba(244,239,230,0.88);
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .chair-illust-wrap:hover .illust-drop-hint { opacity: 1; }
+    .chair-illust-wrap.drag-over .illust-drop-hint { opacity: 1; }
+    .illust-del-btn {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.4rem;
+      background: rgba(26,25,24,0.6);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      padding: 0.2rem 0.45rem;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 2;
+    }
+    .chair-illust-wrap:hover .illust-del-btn { opacity: 1; }
+
+    .chair-illust-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .chair-illust-ph {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      height: 100%;
+      color: var(--border);
+    }
+
+    .chair-illust-ph-id {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.2em;
+      color: var(--border);
+    }
+
+    .chair-illust-ph-hint {
+      font-size: 0.55rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--border);
+    }
+
+    /* サムネイル（結果リスト・一覧） */
+    .chair-thumb {
+      width: 44px;
+      height: 44px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-lt);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .chair-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .chair-thumb-ph {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.52rem;
+      color: var(--border);
+      letter-spacing: 0.05em;
+      text-align: center;
+      line-height: 1.2;
+      padding: 2px;
+    }
+
+    /* ── scrollbar ── */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ══ NAVIGATION ══ -->
+  <nav class="app-nav">
+    <div class="nav-logo" onclick="goTo('landing')">Design Context Engine</div>
+    <div class="nav-links">
+      <button class="nav-btn" id="nb-sensory" onclick="goTo('sensory')">感性検索</button>
+      <button class="nav-btn" id="nb-browse"  onclick="goTo('browse')">全椅子一覧</button>
+      <button class="nav-btn" id="nb-text"    onclick="goTo('text')">テキスト検索</button>
+    </div>
+    <div class="nav-tag"><span id="nav-count">30脚</span> · 15軸
+      <span class="sync-dot" id="sync-dot" title="データ同期状態"></span>
+    </div>
+  </nav>
+
+  <div class="app-body">
+
+    <!-- ══ LANDING ══ -->
+    <div id="v-landing" class="view active">
+      <div class="landing-wrap">
+        <div class="eyebrow">Casokdo · Design Intelligence</div>
+        <h1 class="landing-h1">感性で<br>椅子を<em>探す。</em></h1>
+        <p class="landing-desc">
+          <span id="landing-count">30脚</span>の名作椅子を、デザインの「感性軸」で検索するデータベース。<br>
+          スライダーを動かして、あなたの感性に合う椅子を見つけてください。
+        </p>
+      </div>
+      <div class="entry-grid">
+        <div class="entry-card" onclick="goTo('sensory')">
+          <div class="ec-glyph">⊕</div>
+          <div class="ec-title">感性検索</div>
+          <div class="ec-desc">15の感性軸をスライダーで操作。あなたの「好き」に近い椅子がリアルタイムでリスト表示されます。黄金比率推薦の3脚を常に上部に表示。</div>
+          <div class="ec-cta">感性で検索する →</div>
+        </div>
+        <div class="entry-card" onclick="goTo('browse')">
+          <div class="ec-glyph">≡</div>
+          <div class="ec-title">全椅子一覧</div>
+          <div class="ec-desc" id="ec-desc-browse"><span id="ec-count">30脚</span>すべてを一覧で閲覧。年代・デザイナー順に並べ替え、気になる椅子の詳細を確認。「類似検索」でその椅子に近い感性の椅子を探せます。</div>
+          <div class="ec-cta">一覧を見る →</div>
+        </div>
+        <div class="entry-card" onclick="goTo('text')">
+          <div class="ec-glyph">◎</div>
+          <div class="ec-title">テキスト検索</div>
+          <div class="ec-desc">椅子名・デザイナー名・産地などのキーワードでデータベースを検索。名前が分かっている椅子をすぐに探せます。</div>
+          <div class="ec-cta">キーワードで探す →</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SENSORY SEARCH ══ -->
+    <div id="v-sensory" class="view">
+      <div class="sensory-split">
+
+        <!-- sliders -->
+        <div class="sliders-col">
+          <div class="sc-head">
+            <div class="eyebrow" style="margin-bottom:0.5rem">感性検索</div>
+            <div class="sc-head-title">軸を操作して椅子を探す</div>
+            <div class="sc-head-sub">スライダーが動くたびにマッチ度が更新されます</div>
+          </div>
+
+          <div class="free-search-wrap">
+            <div class="fs-top-row">
+              <div class="fs-label">フリー検索</div>
+              <button class="fs-ai-toggle" id="fs-ai-toggle" onclick="toggleAISettings()">
+                <span class="fs-ai-dot" id="fs-ai-dot"></span>AI設定
+              </button>
+            </div>
+            <div class="fs-input-row">
+              <input class="fs-input" id="free-search-input" type="text"
+                placeholder="例：座りやすい、フローリングに合う、北欧風..."
+                onkeydown="if(event.key==='Enter')applyFreeSearch()">
+              <button class="fs-btn" id="fs-btn" onclick="applyFreeSearch()">→</button>
+            </div>
+            <div class="fs-tags" id="fs-tags"></div>
+            <div class="fs-ai-panel" id="fs-ai-panel">
+              <div class="fs-ai-desc">Gemini APIキーを入力すると、どんな言葉でも椅子を検索できます。</div>
+              <div class="fs-ai-row">
+                <input type="password" class="fs-ai-key" id="fs-ai-key"
+                  placeholder="AIzaSy..."
+                  onkeydown="if(event.key==='Enter')saveGeminiKey()">
+                <button class="fs-ai-save" onclick="saveGeminiKey()">保存</button>
+              </div>
+              <div class="fs-ai-links">
+                <a class="fs-ai-link" href="https://aistudio.google.com/app/apikey" target="_blank">APIキーを取得（無料） →</a>
+                <button class="fs-ai-clear" onclick="clearGeminiKey()">キーを削除</button>
+              </div>
+              <div class="fs-ai-status" id="fs-ai-status"></div>
+            </div>
+          </div>
+
+          <div class="presets-wrap" id="presets-wrap"><!-- JS --></div>
+
+          <div class="sliders-body" id="sliders-body"><!-- JS --></div>
+
+          <div class="sc-foot">
+            <button class="btn-reset" onclick="resetSliders()">リセット — 中央値（50）に戻す</button>
+          </div>
+        </div>
+
+        <!-- results -->
+        <div class="results-col">
+          <div class="rc-head">
+            <div class="rc-title" id="rc-title">全30脚を分析中</div>
+            <div class="label">黄金比率推薦 + マッチ度順</div>
+          </div>
+
+          <div id="results-list" style="padding:0 2.5rem 3rem"><!-- JS --></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BROWSE ══ -->
+    <div id="v-browse" class="view">
+      <div class="browse-header">
+        <div class="eyebrow">椅子データベース</div>
+        <div class="ph-title" id="ph-title-browse">全椅子一覧 — 30脚</div>
+      </div>
+      <div class="browse-controls">
+        <div class="label">表示順</div>
+        <div class="sort-btns">
+          <button class="sort-btn active" id="sb-sheet"    onclick="setSort('sheet')">シート順</button>
+          <button class="sort-btn"        id="sb-year"     onclick="setSort('year')">年代順</button>
+          <button class="sort-btn"        id="sb-name"     onclick="setSort('name')">名前順</button>
+          <button class="sort-btn"        id="sb-designer" onclick="setSort('designer')">デザイナー順</button>
+        </div>
+      </div>
+      <div class="browse-table" id="browse-table"><!-- JS --></div>
+    </div>
+
+    <!-- ══ TEXT SEARCH ══ -->
+    <div id="v-text" class="view">
+      <div class="text-search-header">
+        <div class="eyebrow">テキスト検索</div>
+        <div class="ph-title">キーワードで探す</div>
+      </div>
+      <div class="text-bar">
+        <div class="text-input-wrap">
+          <input class="text-input" id="text-input" type="text"
+            placeholder="椅子名、デザイナー名、産地、年代など..."
+            oninput="runTextSearch(this.value)">
+        </div>
+      </div>
+      <div class="text-results-wrap" id="text-results"><!-- JS --></div>
+    </div>
+
+  </div><!-- end .app-body -->
+</div><!-- end .app -->
+
+<!-- ══ DETAIL PANEL ══ -->
+<div id="detail-overlay" onclick="closeDetail()"></div>
+<div id="detail-panel">
+  <div class="dp-nav">
+    <div class="dp-nav-label">椅子の詳細</div>
+    <button class="btn-close" onclick="closeDetail()">✕ &nbsp;閉じる</button>
+  </div>
+  <div class="dp-body" id="dp-body"><!-- JS --></div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   DATA — 30脚
+════════════════════════════════════════════════════ */
+const CHAIRS = [
+  {id:"CHR-001",name:"No.14",designer:"ミヒャエル・トーネット",year:1859,origin:"オーストリア",
+   axis1:48,axis2:42,axis3:35,axis4:82,axis5:65,axis6:68,axis7:15,
+   desc:"蒸気で曲げたブナ材と6パーツの分解式構造。世界初の工業的量産椅子として民主的デザインの原点を作った。軽量で安価、世界中に輸出されたその存在は、デザインが文化を変えることを証明した。"},
+
+  {id:"CHR-002",name:"ヒルハウスチェア",designer:"チャールズ・レニー・マッキントッシュ",year:1902,origin:"スコットランド",
+   axis1:95,axis2:28,axis3:42,axis4:58,axis5:45,axis6:92,axis7:18,
+   desc:"アーツ・アンド・クラフツとモダニズムの融合。140cmにおよぶ垂直格子の背もたれが空間に圧倒的な緊張感を与える。座るためより、空間に意味を与えるために設計された椅子。"},
+
+  {id:"CHR-003",name:"ワシリーチェア",designer:"マルセル・ブロイヤー",year:1925,origin:"ドイツ",
+   axis1:82,axis2:25,axis3:15,axis4:100,axis5:88,axis6:86,axis7:10,
+   desc:"バウハウスが生んだ鋼管家具の代表作。カンディンスキーに献呈されたこの椅子は、鉄の冷徹さと皮革の対比が生む矛盾の美を体現する。工業材料が芸術になった瞬間。"},
+
+  {id:"CHR-004",name:"LC2",designer:"ル・コルビュジエ",year:1928,origin:"フランス",
+   axis1:86,axis2:50,axis3:28,axis4:82,axis5:100,axis6:74,axis7:12,
+   desc:"「マシン・ア・アシエール（座るための機械）」。外骨格として露出したスチールフレームに独立したクッションを詰め込む。近代建築の哲学を椅子に凝縮した宣言。"},
+
+  {id:"CHR-005",name:"パイミオチェア",designer:"アルヴァ・アアルト",year:1932,origin:"フィンランド",
+   axis1:58,axis2:100,axis3:68,axis4:50,axis5:62,axis6:76,axis7:58,
+   desc:"結核療養所パイミオサナトリウムのために設計。呼吸を助ける角度を持つ曲木合板の背もたれ。機能と人間への優しさが一致する、フィンランド人間主義の頂点。"},
+
+  {id:"CHR-006",name:"スタンダードチェア",designer:"ジャン・プルーヴェ",year:1934,origin:"フランス",
+   axis1:72,axis2:46,axis3:38,axis4:78,axis5:72,axis6:66,axis7:18,
+   desc:"前脚はスチール、後脚はオーク。荷重に応じて素材を使い分けるエンジニアリングの透明性。プルーヴェは「どう作るか」を決して隠さなかった。"},
+
+  {id:"CHR-007",name:"ザ・チェア",designer:"ハンス・J・ウェグナー",year:1949,origin:"デンマーク",
+   axis1:75,axis2:82,axis3:88,axis4:45,axis5:42,axis6:92,axis7:85,
+   desc:"「世界で最も美しい椅子」。ジョイントの精度と手仕事の温かみが共存する。1960年の米大統領選テレビ討論会で世界に知られた、デンマーク職人技の集大成。"},
+
+  {id:"CHR-008",name:"チーフテンチェア",designer:"フィン・ユール",year:1949,origin:"デンマーク",
+   axis1:78,axis2:70,axis3:84,axis4:36,axis5:70,axis6:78,axis7:55,
+   desc:"彫刻的な有機造形。座面と背もたれが構造フレームから「浮遊」する革新的フォルム。北欧デザインに彫刻の概念を持ち込んだ異端者。"},
+
+  {id:"CHR-009",name:"ラウンジチェア＆オットマン",designer:"チャールズ＆レイ・イームズ",year:1956,origin:"アメリカ",
+   axis1:50,axis2:88,axis3:55,axis4:62,axis5:72,axis6:64,axis7:20,
+   desc:"「一流の野球グローブのような包容感」とイームズが語った。成形合板とレザーが作り出す至高の休息。工業技術が生んだ、最も人間的な椅子のひとつ。"},
+
+  {id:"CHR-010",name:"シェルチェア（DSW）",designer:"チャールズ＆レイ・イームズ",year:1950,origin:"アメリカ",
+   axis1:42,axis2:55,axis3:15,axis4:88,axis5:75,axis6:60,axis7:18,
+   desc:"最初のガラス繊維強化プラスチック椅子。大量生産と有機的フォームを同時に実現。民主的デザインという思想を、美しさとともに体現した名作。"},
+
+  {id:"CHR-011",name:"ダイヤモンドチェア",designer:"ハリー・ベルトイア",year:1952,origin:"アメリカ",
+   axis1:76,axis2:34,axis3:28,axis4:86,axis5:82,axis6:84,axis7:14,
+   desc:"溶接スチールロッドが作る3次元の彫刻。「空気で作られた椅子」とベルトイアは語った。座具であり彫刻作品であるという二重性を持つ。"},
+
+  {id:"CHR-012",name:"バタフライスツール",designer:"柳宗理",year:1956,origin:"日本",
+   axis1:54,axis2:62,axis3:50,axis4:55,axis5:48,axis6:82,axis7:92,
+   desc:"二枚の成形合板が蝶のように開く。日本の美意識と工業技術の融合点。MoMAに永久収蔵された、日本デザインの世界的象徴。民藝の哲学が現代技術と出会った瞬間。"},
+
+  {id:"CHR-013",name:"みずのえチェア",designer:"水之江忠臣",year:1954,origin:"日本",
+   axis1:44,axis2:58,axis3:62,axis4:52,axis5:38,axis6:56,axis7:88,
+   desc:"日本の伝統と洋家具をつなぐ実験的作品。国産デザインの黎明期を体現し、日本人が西洋の椅子文化を独自に消化していく過程を示す。"},
+
+  {id:"CHR-014",name:"ラタンチェア",designer:"剣持勇",year:1960,origin:"日本",
+   axis1:42,axis2:72,axis3:82,axis4:32,axis5:35,axis6:58,axis7:90,
+   desc:"日本の籐素材を現代的に再解釈。民藝の精神を工業生産に昇華した名作。剣持勇が目指した「日本の普遍性」が籐の曲線に宿る。"},
+
+  {id:"CHR-015",name:"低座椅子",designer:"長大作",year:1960,origin:"日本",
+   axis1:38,axis2:86,axis3:72,axis4:38,axis5:40,axis6:64,axis7:94,
+   desc:"日本の床座文化から生まれた低重心の椅子。畳とフローリングをつなぐ架け橋。身体と床の新しい関係を提示した、日本的身体感覚の結晶。"},
+
+  {id:"CHR-016",name:"エッグチェア",designer:"アルネ・ヤコブセン",year:1958,origin:"デンマーク",
+   axis1:74,axis2:82,axis3:32,axis4:76,axis5:78,axis6:80,axis7:32,
+   desc:"コペンハーゲンSASロイヤルホテルのために設計。完全な球面が作る孤独の空間。世界の喧騒から隔てられた、個人の繭のような特別な居場所。"},
+
+  {id:"CHR-017",name:"パントンチェア",designer:"ヴェルナー・パントン",year:1967,origin:"デンマーク",
+   axis1:78,axis2:38,axis3:10,axis4:100,axis5:70,axis6:88,axis7:12,
+   desc:"世界初の一体成形プラスチック椅子。S字フォームの連続が作る視覚的リズム。素材・構造・フォームの三位一体が、デザインの新地平を切り開いた。"},
+
+  {id:"CHR-018",name:"サッコ",designer:"ガッティ、パオリーニ、テオドーロ",year:1968,origin:"イタリア",
+   axis1:25,axis2:92,axis3:12,axis4:48,axis5:30,axis6:38,axis7:16,
+   desc:"ビーズを充填した袋。「座る」概念の解体。ポストモダンの反抗宣言であり、身体が形を決めるというラディカルな民主主義。形のない椅子。"},
+
+  {id:"CHR-019",name:"アップ5（ドナ）",designer:"ガエターノ・ペシェ",year:1969,origin:"イタリア",
+   axis1:72,axis2:78,axis3:30,axis4:55,axis5:68,axis6:82,axis7:18,
+   desc:"女性の身体を模した泡ウレタンの椅子。真空圧縮された状態から膨張するドラマ。ペシェは椅子に政治的・身体的な意味を込め続けた。"},
+
+  {id:"CHR-020",name:"マラルンガ",designer:"ヴィコ・マジストレッティ",year:1973,origin:"イタリア",
+   axis1:42,axis2:84,axis3:30,axis4:58,axis5:55,axis6:50,axis7:18,
+   desc:"ヘッドレストが回転する機能美。複雑な機構を優雅な外観に包む、イタリアン・デザインの成熟した実用主義。使うほどにその知性が見えてくる。"},
+
+  {id:"CHR-021",name:"スーパーレジェーラ",designer:"ジオ・ポンティ",year:1957,origin:"イタリア",
+   axis1:66,axis2:72,axis3:100,axis4:18,axis5:35,axis6:82,axis7:38,
+   desc:"わずか1.7kg。軽量化の極限を追求した木製椅子。伝統的なキアーヴァリの椅子を現代化し、イタリアの職人技を世界に示した。軽さは哲学だった。"},
+
+  {id:"CHR-022",name:"コンキスタドール",designer:"ライナー・ダウムラング",year:1970,origin:"ドイツ",
+   axis1:70,axis2:32,axis3:12,axis4:82,axis5:58,axis6:46,axis7:10,
+   desc:"フォルムの解体と再構築。ポストモダンの問いを椅子で体現した実験作。機能より概念が先行する時代の産物。"},
+
+  {id:"CHR-023",name:"プルースト",designer:"アレッサンドロ・メンディーニ",year:1978,origin:"イタリア",
+   axis1:62,axis2:54,axis3:78,axis4:24,axis5:62,axis6:72,axis7:20,
+   desc:"マルセル・プルーストの肖像画を点描でそのまま椅子にした概念的作品。「椅子とは何か」という根本的問いに、絵画で答えた椅子の哲学書。"},
+
+  {id:"CHR-024",name:"ウィンク",designer:"北岡俊之",year:1980,origin:"日本",
+   axis1:34,axis2:80,axis3:32,axis4:52,axis5:64,axis6:54,axis7:78,
+   desc:"ウサギの耳のようなヘッドレスト、変形する骨格、カラフルな色展開。遊び心と機能性を両立させた、日本発のポップな名作。"},
+
+  {id:"CHR-025",name:"ミス・ブランチ",designer:"倉俣史朗",year:1988,origin:"日本",
+   axis1:82,axis2:46,axis3:60,axis4:58,axis5:88,axis6:94,axis7:90,
+   desc:"アクリル内に封じ込められた造花。永遠と儚さの閉じ込め。テネシー・ウィリアムズの「欲望という名の電車」に着想を得た、椅子の形をした詩。倉俣史朗のポエジーの頂点。"},
+
+  {id:"CHR-026",name:"ハドソンチェア",designer:"フィリップ・スタルク",year:2000,origin:"フランス",
+   axis1:68,axis2:38,axis3:12,axis4:86,axis5:68,axis6:72,axis7:12,
+   desc:"細いアルミ脚で支えるポリプロピレンシェル。スタルクの民主的デザイン哲学の結晶。美しさを高価なものだけに与えない、という宣言。"},
+
+  {id:"CHR-027",name:"エアーチェア",designer:"ジャスパー・モリソン",year:2000,origin:"イギリス",
+   axis1:46,axis2:52,axis3:10,axis4:92,axis5:48,axis6:62,axis7:24,
+   desc:"ガス射出成形の一体型椅子。「普通さ」の極限を追求したスーパーノーマル。過剰なデザインへの静かな抵抗。存在感を消すことで現れる存在。"},
+
+  {id:"CHR-028",name:"チェアワン",designer:"コンスタンティン・グルチッチ",year:2003,origin:"ドイツ",
+   axis1:88,axis2:30,axis3:12,axis4:90,axis5:78,axis6:86,axis7:14,
+   desc:"アルミダイキャストの幾何学的格子構造。建築的彫刻としての椅子。ピクセルが立体になった未来派の宣言。マグマの最高傑作。"},
+
+  {id:"CHR-029",name:"SANAAチェア",designer:"SANAA（妹島和世＋西沢立衛）",year:2005,origin:"日本",
+   axis1:82,axis2:48,axis3:55,axis4:60,axis5:52,axis6:88,axis7:96,
+   desc:"薄い鋼板の一体プレス成形。存在感と透明性を同時に持つ建築的問い。プリツカー賞建築家による椅子は、あらゆる余剰を削ぎ落とした純粋な関係性。"},
+
+  {id:"CHR-030",name:"ヒロシマ",designer:"深澤直人",year:2008,origin:"日本",
+   axis1:62,axis2:88,axis3:86,axis4:35,axis5:35,axis6:84,axis7:98,
+   desc:"職人技と現代デザインの対話。マルニ木工との協業で生まれた「もみじ」材の椅子。「当たり前の美しさ」が日本の木工技術と交差する。日本デザインの現代的集大成。"}
+];
+
+/* ── axis8〜15 追加データ ── */
+const EXTRA_AXES = {
+  'CHR-001':{axis8:78, axis9:58, axis10:65, axis11:42, axis12:88, axis13:8,  axis14:32, axis15:70},
+  'CHR-002':{axis8:65, axis9:22, axis10:45, axis11:48, axis12:82, axis13:15, axis14:48, axis15:82},
+  'CHR-003':{axis8:92, axis9:42, axis10:88, axis11:12, axis12:96, axis13:6,  axis14:62, axis15:64},
+  'CHR-004':{axis8:60, axis9:72, axis10:100,axis11:25, axis12:98, axis13:8,  axis14:45, axis15:70},
+  'CHR-005':{axis8:78, axis9:88, axis10:62, axis11:62, axis12:86, axis13:8,  axis14:36, axis15:92},
+  'CHR-006':{axis8:76, axis9:64, axis10:72, axis11:28, axis12:90, axis13:4,  axis14:38, axis15:76},
+  'CHR-007':{axis8:82, axis9:82, axis10:42, axis11:78, axis12:78, axis13:6,  axis14:28, axis15:80},
+  'CHR-008':{axis8:42, axis9:76, axis10:70, axis11:82, axis12:70, axis13:10, axis14:24, axis15:74},
+  'CHR-009':{axis8:35, axis9:95, axis10:72, axis11:48, axis12:82, axis13:8,  axis14:36, axis15:88},
+  'CHR-010':{axis8:78, axis9:62, axis10:75, axis11:10, axis12:88, axis13:12, axis14:64, axis15:62},
+  'CHR-011':{axis8:86, axis9:48, axis10:82, axis11:18, axis12:88, axis13:8,  axis14:58, axis15:58},
+  'CHR-012':{axis8:84, axis9:44, axis10:48, axis11:95, axis12:68, axis13:8,  axis14:32, axis15:72},
+  'CHR-013':{axis8:76, axis9:70, axis10:38, axis11:86, axis12:55, axis13:4,  axis14:22, axis15:84},
+  'CHR-014':{axis8:62, axis9:76, axis10:35, axis11:92, axis12:48, axis13:5,  axis14:24, axis15:86},
+  'CHR-015':{axis8:82, axis9:90, axis10:40, axis11:88, axis12:58, axis13:4,  axis14:20, axis15:95},
+  'CHR-016':{axis8:58, axis9:90, axis10:78, axis11:18, axis12:78, axis13:8,  axis14:52, axis15:88},
+  'CHR-017':{axis8:76, axis9:38, axis10:70, axis11:4,  axis12:82, axis13:20, axis14:95, axis15:62},
+  'CHR-018':{axis8:48, axis9:96, axis10:30, axis11:6,  axis12:40, axis13:72, axis14:56, axis15:100},
+  'CHR-019':{axis8:18, axis9:86, axis10:68, axis11:10, axis12:46, axis13:88, axis14:68, axis15:95},
+  'CHR-020':{axis8:46, axis9:94, axis10:55, axis11:18, axis12:58, axis13:30, axis14:36, axis15:92},
+  'CHR-021':{axis8:95, axis9:72, axis10:35, axis11:88, axis12:66, axis13:4,  axis14:26, axis15:72},
+  'CHR-022':{axis8:36, axis9:54, axis10:58, axis11:8,  axis12:70, axis13:24, axis14:34, axis15:86},
+  'CHR-023':{axis8:12, axis9:42, axis10:62, axis11:70, axis12:30, axis13:98, axis14:30, axis15:76},
+  'CHR-024':{axis8:35, axis9:92, axis10:64, axis11:25, axis12:48, axis13:78, axis14:54, axis15:98},
+  'CHR-025':{axis8:30, axis9:38, axis10:88, axis11:42, axis12:38, axis13:92, axis14:70, axis15:60},
+  'CHR-026':{axis8:72, axis9:48, axis10:68, axis11:6,  axis12:64, axis13:45, axis14:72, axis15:62},
+  'CHR-027':{axis8:96, axis9:72, axis10:48, axis11:3,  axis12:72, axis13:4,  axis14:42, axis15:66},
+  'CHR-028':{axis8:58, axis9:28, axis10:78, axis11:3,  axis12:58, axis13:18, axis14:86, axis15:70},
+  'CHR-029':{axis8:94, axis9:46, axis10:52, axis11:55, axis12:68, axis13:8,  axis14:54, axis15:72},
+  'CHR-030':{axis8:86, axis9:90, axis10:35, axis11:82, axis12:62, axis13:4,  axis14:24, axis15:86},
+};
+CHAIRS.forEach((c, i) => { c.seq = i; Object.assign(c, EXTRA_AXES[c.id] || {}); });
+
+const A_NUMS  = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮'];
+const A_NAMES = ['建築的緊張感','身体を包む優しさ','手仕事感（工芸性）','工業的合理性','素材的対比','形態言語','日本文脈','ミニマル性','快適性','素材対比Ⅱ','民藝性','西洋近代性','ポストモダン性','未来性','身体主導度'];
+const A_KEYS  = ['axis1','axis2','axis3','axis4','axis5','axis6','axis7','axis8','axis9','axis10','axis11','axis12','axis13','axis14','axis15'];
+const A_HINTS = [
+  ['穏やか','張りつめた'],
+  ['冷徹','温かい'],
+  ['工業的','手作業'],
+  ['有機的','機械的'],
+  ['均質','対照的'],
+  ['装飾的','削ぎ落とし'],
+  ['グローバル','日本的'],
+  ['装飾的','ミニマル'],
+  ['疲れやすい','快適'],
+  ['均質','対照的'],
+  ['工業的','民藝的'],
+  ['非西洋','西洋近代'],
+  ['モダン','ポストモダン'],
+  ['現代的','未来的'],
+  ['椅子に従う','身体が決める'],
+];
+
+/* 軸の3グループ分類 */
+const AXIS_GROUPS = [
+  {label:'基本感性軸', en:'Core Sensory',   keys:['axis1','axis2','axis3','axis4','axis5','axis6']},
+  {label:'身体・素材軸', en:'Body & Material', keys:['axis8','axis9','axis10','axis15']},
+  {label:'文化・時代軸', en:'Culture & Era',  keys:['axis7','axis11','axis12','axis13','axis14']},
+];
+
+/* スコア根拠テキスト */
+const REASONS = {
+  'CHR-001':{axis4:'蒸気曲木6パーツ分解式。世界初の工業量産構造',axis7:'ウィーン普遍様式。特定文化を超えるグローバル性'},
+  'CHR-002':{axis1:'140cm垂直格子が空間を統治する。絶対的建築的緊張',axis2:'着座快適性より空間演出を最優先した設計',axis6:'格子の純粋反復。削ぎ落としの極致'},
+  'CHR-003':{axis4:'バウハウス工業主義の頂点。数学的鋼管フレーム設計',axis5:'冷徹な鋼管×温かい皮革の極的対比',axis8:'鋼管と皮革のみで完結する究極のミニマル'},
+  'CHR-004':{axis5:'外骨格スチール×独立クッション。素材役割の完全分離',axis1:'露出フレームの幾何学が建築的緊張を作る'},
+  'CHR-005':{axis2:'患者の呼吸を助ける角度設計。医療的優しさの極点',axis15:'呼吸・重力と対話する身体参与型の座り方'},
+  'CHR-006':{axis4:'荷重分析で前後脚の素材を使い分ける工学的透明性',axis6:'構造の論理が形態を決定する。隠さないデザイン'},
+  'CHR-007':{axis3:'ジョイント精度と手仕事の極致。職人技の集大成',axis6:'有機曲線の中の削ぎ落とし。余剰ゼロの境地',axis9:'人体工学的曲線が長時間の快適さを実現'},
+  'CHR-008':{axis3:'彫刻的造形を木工手仕事で実現した異端的試み',axis11:'北欧民藝的な人間スケールの温かみ'},
+  'CHR-009':{axis2:'野球グローブのような包容感。人間への深い優しさ',axis9:'成形合板×レザーが生む至高の休息体験'},
+  'CHR-010':{axis4:'FRP量産有機フォルム。民主的工業デザインの実現',axis7:'アメリカ楽観主義。文化特定性を持たない普遍性'},
+  'CHR-011':{axis1:'溶接ロッドの幾何学が空間を3次元に彫刻する',axis4:'溶接鋼格子。工業技術の彫刻的応用の極点'},
+  'CHR-012':{axis11:'柳宗理の民藝哲学。工業×民藝の最高点',axis7:'MoMAが証明した日本的美意識の国際通用性'},
+  'CHR-013':{axis7:'日本洋家具黎明期の文化的実験作',axis11:'木工民藝と洋椅子文化の接点を探った作品'},
+  'CHR-014':{axis7:'籐素材による日本文化の現代的解釈',axis11:'民藝精神を工業生産に昇華したモデルケース'},
+  'CHR-015':{axis7:'床座文化から生まれた日本的身体感覚の結晶',axis15:'床と椅子の間。能動的な身体参加を促す設計'},
+  'CHR-016':{axis2:'球面が包む完全なプライベート空間の構築',axis9:'繭のような包容感。長時間使用でも疲れない設計'},
+  'CHR-017':{axis4:'世界初の一体成形プラスチック。工業合理性の革命',axis14:'1967年の未来。S字フォームが新地平を切り開いた'},
+  'CHR-018':{axis2:'身体を受け入れる形のない究極の包容力',axis13:'「座る」概念の解体。ポストモダン的反抗宣言'},
+  'CHR-019':{axis13:'女体モチーフの政治的コンセプト椅子',axis15:'ウレタンが身体形状を受け入れる能動的な関係性'},
+  'CHR-020':{axis2:'回転ヘッドレストが生む完璧な身体適合性',axis9:'用途に合わせ変形する疲労最小化設計'},
+  'CHR-021':{axis3:'わずか1.7kgを実現した木工技術の極致',axis8:'軽さが生む視覚的ミニマリズムの頂点'},
+  'CHR-022':{axis4:'形態解体と再構築の工業的実験',axis7:'ドイツ合理主義。文化的特殊性を意図的に排除'},
+  'CHR-023':{axis13:'絵画を椅子にする概念的極点。批評の物質化',axis8:'点描装飾に覆われた究極の非ミニマル性'},
+  'CHR-024':{axis7:'日本発のポップデザイン。ウサギ耳のユーモア',axis15:'変形・回転する能動的身体参加の設計思想'},
+  'CHR-025':{axis1:'アクリルの透明緊張が空間を支配する',axis13:'儚さと永遠を封じ込めたポストモダン詩学'},
+  'CHR-026':{axis4:'細アルミ脚×PPシェル。民主的工業デザインの結晶',axis8:'過剰を排したスタルクのミニマル宣言'},
+  'CHR-027':{axis4:'ガス射出一体成形。工業技術の究極形',axis8:'「普通さ」の極限追求。存在を消すミニマル'},
+  'CHR-028':{axis1:'アルミ幾何学格子が建築的緊張を作る',axis14:'ピクセルが立体化。デジタル時代の椅子宣言'},
+  'CHR-029':{axis1:'薄い鋼板の純粋な建築的緊張感',axis8:'あらゆる余剰を削ぎ落とした純粋ミニマル',axis7:'日本の建築思想を椅子に凝縮した宣言'},
+  'CHR-030':{axis3:'職人技とCNC加工精度の対話',axis7:'「当たり前の美しさ」と日本木工の邂逅',axis11:'民藝的精神と現代デザインの静かな対話'},
+};
+
+/* ════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════ */
+let SEARCH = {axis1:50,axis2:50,axis3:50,axis4:50,axis5:50,axis6:50,axis7:50,
+              axis8:50,axis9:50,axis10:50,axis11:50,axis12:50,axis13:50,axis14:50,axis15:50};
+let SORT    = 'sheet';
+let PRESET  = null;
+let DETAIL_ID = null;
+let AI_SUPPLEMENT = '';   // AIがDBに候補なしと判断した場合の補足テキスト
+let AI_QUERY_LABEL = '';  // 現在のAI検索クエリ表示用
+
+/* ════════════════════════════════════════════════════
+   PRESETS
+════════════════════════════════════════════════════ */
+const PRESETS = {
+  architectural: {label:'建築的',  v:{axis1:90,axis2:28,axis3:38,axis4:72,axis5:65,axis6:88,axis7:18,
+                                      axis8:78,axis9:40,axis10:65,axis11:20,axis12:85,axis13:12,axis14:55,axis15:55}},
+  warm:          {label:'温かい',  v:{axis1:32,axis2:88,axis3:78,axis4:28,axis5:38,axis6:55,axis7:62,
+                                      axis8:42,axis9:85,axis10:42,axis11:70,axis12:55,axis13:10,axis14:22,axis15:88}},
+  industrial:    {label:'機械的',  v:{axis1:65,axis2:22,axis3:12,axis4:92,axis5:82,axis6:72,axis7:14,
+                                      axis8:85,axis9:30,axis10:80,axis11:8, axis12:90,axis13:18,axis14:72,axis15:45}},
+  japanese:      {label:'日本的',  v:{axis1:44,axis2:72,axis3:78,axis4:32,axis5:38,axis6:66,axis7:90,
+                                      axis8:55,axis9:80,axis10:38,axis11:85,axis12:35,axis13:8, axis14:18,axis15:90}},
+  minimal:       {label:'ミニマル',v:{axis1:62,axis2:44,axis3:22,axis4:58,axis5:48,axis6:88,axis7:28,
+                                      axis8:92,axis9:55,axis10:48,axis11:15,axis12:65,axis13:8, axis14:45,axis15:40}},
+};
+
+/* ════════════════════════════════════════════════════
+   CORE LOGIC
+════════════════════════════════════════════════════ */
+function calcMatch(chair, s) {
+  const avg = A_KEYS.reduce((sum, k) => sum + Math.abs(chair[k] - s[k]), 0) / A_KEYS.length;
+  return Math.max(0, Math.round(100 - avg));
+}
+
+/* Golden ratio — computed once from full dataset, always fixed */
+function computeGolden() {
+  if (CHAIRS.length === 0) return;
+  const r1 = CHAIRS.reduce((b,c) => c.axis1 > b.axis1 ? c : b);
+  const r2 = CHAIRS.filter(c=>c.id!==r1.id).reduce((b,c)=>(c.axis4-c.axis2)>(b.axis4-b.axis2)?c:b);
+  const r3 = CHAIRS.filter(c=>c.id!==r1.id&&c.id!==r2.id).reduce((b,c)=>c.axis7>b.axis7?c:b);
+  GOLDEN.length = 0;
+  GOLDEN.push(r1, r2, r3);
+  GOLDEN_IDS.clear();
+  GOLDEN.forEach(c => GOLDEN_IDS.add(c.id));
+}
+
+let GOLDEN    = [];
+let GOLDEN_IDS = new Set();
+computeGolden();
+const GOLDEN_META = [
+  {label:'王道',type:'王道・信頼',  en:'Most Authoritative', why:`①建築的緊張感が全${CHAIRS.length}脚中最高。空間に絶対的な存在感を与える、最も信頼できる一脚。`},
+  {label:'発見',type:'ギャップ・発見',en:'Most Surprising',   why:'④工業性と②優しさの対比が最大。この矛盾が「なぜ？」という発見の記憶を刻む。'},
+  {label:'教養',type:'大穴・教養', en:'Most Cultural',      why:'⑦日本文脈が1・2位除外の中で最高。日本デザインの価値を深く体現する一脚。'},
+];
+
+/* ════════════════════════════════════════════════════
+   RADAR CHART SVG
+════════════════════════════════════════════════════ */
+function mkRadar(chair, sz=240) {
+  const cx=sz/2, cy=sz/2, r=sz/2-32, n=A_KEYS.length;
+  const vals = A_KEYS.map(k=>chair[k]);
+  const pt = (i,lv) => {
+    const a = ((-90+(360/n)*i)*Math.PI)/180;
+    return [+(cx+lv*r*Math.cos(a)).toFixed(1), +(cy+lv*r*Math.sin(a)).toFixed(1)];
+  };
+  let s = `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}">`;
+  [0.25,0.5,0.75,1].forEach(lv => {
+    const p = Array.from({length:n},(_,i)=>pt(i,lv).join(',')).join(' ');
+    s += `<polygon points="${p}" fill="none" stroke="#DDD5C5" stroke-width="${lv===1?1:.5}"/>`;
+  });
+  for(let i=0;i<n;i++){
+    const [x,y]=pt(i,1);
+    s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#DDD5C5" stroke-width=".5"/>`;
+  }
+  const dp = vals.map((v,i)=>pt(i,v/100).join(',')).join(' ');
+  s+=`<polygon points="${dp}" fill="#1A1918" fill-opacity=".09" stroke="#1A1918" stroke-width="1.5"/>`;
+  vals.forEach((v,i)=>{
+    const [x,y]=pt(i,v/100);
+    s+=`<circle cx="${x}" cy="${y}" r="2.5" fill="#1A1918"/>`;
+  });
+  for(let i=0;i<n;i++){
+    const [lx,ly]=pt(i,1.3);
+    const ta = lx<cx-3?'end':lx>cx+3?'start':'middle';
+    s+=`<text x="${lx}" y="${ly}" text-anchor="${ta}" dominant-baseline="middle" font-size="9" fill="#9B8B75" font-family="Cormorant Garamond,serif">${A_NUMS[i]}</text>`;
+  }
+  return s+'</svg>';
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER — SENSORY SEARCH
+════════════════════════════════════════════════════ */
+function renderSliders() {
+  /* presets */
+  document.getElementById('presets-wrap').innerHTML =
+    Object.entries(PRESETS).map(([k,p])=>
+      `<button class="preset-btn${PRESET===k?' active':''}" onclick="applyPreset('${k}')">${p.label}</button>`
+    ).join('');
+
+  /* sliders */
+  document.getElementById('sliders-body').innerHTML =
+    A_KEYS.map((k,i) => {
+      const v = SEARCH[k];
+      const pct = v + '%';
+      return `
+        <div class="slider-item">
+          <div class="slider-top">
+            <div class="slider-label">
+              <span class="sl-num">${A_NUMS[i]}</span>
+              <span class="sl-name">${A_NAMES[i]}</span>
+            </div>
+            <span class="sl-val" id="sv${i}">${v}</span>
+          </div>
+          <input type="range" min="0" max="100" value="${v}"
+            style="--pct:${pct}"
+            oninput="onSlide(${i},+this.value,this)">
+          <div class="slider-hints">
+            <span class="sh">${A_HINTS[i][0]}</span>
+            <span class="sh">${A_HINTS[i][1]}</span>
+          </div>
+        </div>`;
+    }).join('');
+}
+
+function onSlide(i, val, el) {
+  SEARCH[A_KEYS[i]] = val;
+  el.style.setProperty('--pct', val+'%');
+  document.getElementById('sv'+i).textContent = val;
+  PRESET = null;
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  renderResults();
+}
+
+function renderResults() {
+  /* 全N脚をマッチ度順でソート */
+  const sorted = CHAIRS
+    .map(c => ({ ...c, match: calcMatch(c, SEARCH) }))
+    .sort((a, b) => b.match - a.match);
+
+  /* 黄金比率バッジマップ */
+  const goldenBadge = {};
+  GOLDEN.forEach((c, i) => { goldenBadge[c.id] = GOLDEN_META[i]; });
+
+  const top = sorted[0];
+  const rest = sorted.slice(1);
+
+  /* AI補足カード（DB信頼度が低い場合のみ） */
+  let html = '';
+  if (AI_SUPPLEMENT) {
+    html += `
+      <div class="ai-supp-card">
+        <div class="ai-supp-header">
+          <span class="ai-supp-icon">◈</span>
+          <span class="ai-supp-label">AIの知識による補足 — 「${AI_QUERY_LABEL}」</span>
+        </div>
+        <div class="ai-supp-text">${AI_SUPPLEMENT}</div>
+        <div class="ai-supp-note">※ 以下はデータベース内の近似候補です</div>
+      </div>`;
+  }
+
+  /* 1位カード（大きく表示） */
+  const topBadge = goldenBadge[top.id];
+  const topBadgeHTML = topBadge
+    ? `<div class="golden-badges"><span class="gbadge">${topBadge.type}</span></div>`
+    : '';
+
+  html += `
+    <div class="rl-top-card" onclick="openDetail('${top.id}')">
+      <div style="display:flex;gap:1.25rem;align-items:flex-start">
+        <div class="chair-thumb" style="width:80px;height:80px;flex-shrink:0">
+          <img src="images/${top.id}.png"
+            onerror="chairThumbFallback(this,'${top.id}',1)" alt="">
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="rl-top-header">
+            <div class="rl-rank-big">1</div>
+            <div style="text-align:right">
+              <div class="rl-match-big">${top.match}%</div>
+              <div class="rl-match-big-label">マッチ度</div>
+            </div>
+          </div>
+          <div class="rl-top-name">${top.name}</div>
+          <div class="rl-top-meta">${top.designer} · ${top.year} · ${top.origin}</div>
+          ${topBadgeHTML}
+        </div>
+      </div>
+      <div class="rl-top-bar-track" style="margin-top:1rem"><div class="rl-top-bar" style="width:${top.match}%"></div></div>
+    </div>`;
+
+  /* 2位以降リスト */
+  html += rest.map((c, i) => {
+    const badge = goldenBadge[c.id];
+    const badgeHTML = badge
+      ? `<div class="rl-badge-wrap"><span class="rl-gbadge">${badge.type}</span></div>`
+      : '<div></div>';
+    return `
+      <div class="rl-row" onclick="openDetail('${c.id}')">
+        <div class="rl-num">${i + 2}</div>
+        <div class="chair-thumb">
+          <img src="images/${c.id}.png"
+            onerror="chairThumbFallback(this,'${c.id}',1)" alt="">
+        </div>
+        <div>
+          <div class="rl-name">${c.name}</div>
+          <div class="rl-designer">${c.designer} · ${c.year}</div>
+        </div>
+        ${badgeHTML}
+        <div class="rl-match-wrap">
+          <div class="rl-pct">${c.match}%</div>
+          <div class="rl-bar-track"><div class="rl-bar" style="width:${c.match}%"></div></div>
+        </div>
+        <div class="rl-link">→</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('results-list').innerHTML = html;
+  document.getElementById('rc-title').textContent = `全${CHAIRS.length}脚 · 1位マッチ ${top.match}% — ${top.name}`;
+}
+
+function applyPreset(k) {
+  SEARCH = {...PRESETS[k].v};
+  PRESET = k;
+  AI_SUPPLEMENT = '';
+  AI_QUERY_LABEL = '';
+  document.getElementById('free-search-input').value = '';
+  document.getElementById('fs-tags').innerHTML = '';
+  renderSliders();
+  renderResults();
+}
+
+function resetSliders() {
+  SEARCH = {axis1:50,axis2:50,axis3:50,axis4:50,axis5:50,axis6:50,axis7:50,
+            axis8:50,axis9:50,axis10:50,axis11:50,axis12:50,axis13:50,axis14:50,axis15:50};
+  PRESET = null;
+  AI_SUPPLEMENT = '';
+  AI_QUERY_LABEL = '';
+  document.getElementById('free-search-input').value = '';
+  document.getElementById('fs-tags').innerHTML = '';
+  renderSliders();
+  renderResults();
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER — BROWSE
+════════════════════════════════════════════════════ */
+function renderBrowse() {
+  const sorted = [...CHAIRS].sort((a,b)=>{
+    if(SORT==='sheet')    return (a.seq ?? 0) - (b.seq ?? 0);
+    if(SORT==='year')     return a.year - b.year;
+    if(SORT==='name')     return a.name.localeCompare(b.name,'ja');
+    if(SORT==='designer') return a.designer.localeCompare(b.designer,'ja');
+    return 0;
+  });
+  document.getElementById('browse-table').innerHTML = sorted.map((c,i)=>`
+    <div class="br-row" onclick="openDetail('${c.id}')">
+      <div class="br-idx">${i+1}</div>
+      ${chairThumbHTML(c)}
+      <div><div class="br-name">${c.name}</div></div>
+      <div class="br-designer">${c.designer}</div>
+      <div class="br-year">${c.year}</div>
+      <div class="br-origin">${c.origin}</div>
+      <div class="br-actions" onclick="event.stopPropagation()">
+        <button class="btn-xs" onclick="openDetail('${c.id}')">詳細</button>
+        <button class="btn-xs" onclick="searchSimilar('${c.id}')">類似検索</button>
+      </div>
+    </div>`).join('');
+}
+
+function setSort(key) {
+  SORT = key;
+  ['sheet','year','name','designer'].forEach(k=>{
+    const el = document.getElementById('sb-'+k);
+    if (el) el.classList.toggle('active', k===key);
+  });
+  renderBrowse();
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER — TEXT SEARCH
+════════════════════════════════════════════════════ */
+function runTextSearch(q) {
+  const qn = q.trim().toLowerCase();
+  const res = qn === ''
+    ? CHAIRS
+    : CHAIRS.filter(c=>
+        c.name.toLowerCase().includes(qn)      ||
+        c.designer.toLowerCase().includes(qn)  ||
+        c.origin.includes(q)                   ||
+        String(c.year).includes(qn)
+      );
+
+  if(res.length === 0) {
+    document.getElementById('text-results').innerHTML =
+      `<div class="empty-msg">「${q}」に該当する椅子が見つかりませんでした</div>`;
+    return;
+  }
+
+  document.getElementById('text-results').innerHTML =
+    `<div class="label" style="margin-bottom:1.25rem">${res.length}件</div>` +
+    res.map(c=>`
+      <div class="tr-row" onclick="openDetail('${c.id}')">
+        <div>
+          <div class="tr-name">${c.name}</div>
+        </div>
+        <div class="tr-designer">${c.designer}</div>
+        <div class="tr-year">${c.year}</div>
+        <div class="tr-link">詳細 →</div>
+      </div>`).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   DETAIL PANEL
+════════════════════════════════════════════════════ */
+function openDetail(id) {
+  const chair = CHAIRS.find(c=>c.id===id);
+  if(!chair) return;
+  DETAIL_ID = id;
+
+  const match = calcMatch(chair, SEARCH);
+  const ct = chair.axis4 - chair.axis2;
+  const ctBarL = ct >= 0 ? 50 : Math.max(0, 50 + ct / 2);
+  const ctBarW = Math.min(50, Math.abs(ct) / 2);
+  const ctInsight = ct > 50  ? '強い矛盾 — 工業の冷徹さと優しさの緊張が記憶を刻む'
+                  : ct > 20  ? '中程度の矛盾 — 合理性と温かみが複雑に共存する'
+                  : ct < -30 ? '逆転 — 優しさが工業性を大きく上回る'
+                  :            '均衡 — 工業感と優しさが拮抗する';
+  const reasons = REASONS[chair.id] || {};
+
+  const groupedHTML = AXIS_GROUPS.map(g =>
+    `<div class="dp-group-head">
+       <span class="dp-group-label">${g.label}</span>
+       <span class="dp-group-en">${g.en}</span>
+     </div>` +
+    g.keys.map(k => {
+      const i = A_KEYS.indexOf(k);
+      const r = reasons[k];
+      return `<div class="dp-axis-row">
+          <div class="dp-ax-idx">${A_NUMS[i]}</div>
+          <div class="dp-ax-name">${A_NAMES[i]}</div>
+          <div class="dp-ax-track"><div class="dp-ax-fill" style="width:${chair[k]}%"></div></div>
+          <div class="dp-ax-val">${chair[k]}</div>
+        </div>` + (r ? `<div class="dp-reason">${r}</div>` : '');
+    }).join('')
+  ).join('');
+
+  document.getElementById('dp-body').innerHTML = `
+    <div class="dp-name">${chair.name}</div>
+    <div class="dp-meta">${chair.designer} · ${chair.year} · ${chair.origin}</div>
+
+    ${chairIllustHTML(chair)}
+
+    <div class="dp-match-row">
+      <div>
+        <div class="dp-match-label">現在の検索条件とのマッチ度</div>
+        <div class="dp-match-val">${match}%</div>
+      </div>
+    </div>
+
+    <div class="dp-contradiction">
+      <div class="dp-ct-label">矛盾指数 — 工業感④ vs 優しさ②</div>
+      <div class="dp-ct-equation">④ ${chair.axis4} &minus; ② ${chair.axis2} &nbsp;=&nbsp; <b>${ct > 0 ? '+' : ''}${ct}</b></div>
+      <div class="dp-ct-bar-track">
+        <div class="dp-ct-bar" style="left:${ctBarL}%;width:${ctBarW}%"></div>
+      </div>
+      <div class="dp-ct-insight">${ctInsight}</div>
+    </div>
+
+    <div class="dp-radar">${mkRadar(chair)}</div>
+
+    <hr class="divider">
+
+    <div class="dp-axes">${groupedHTML}</div>
+
+    <hr class="divider">
+
+    <div class="dp-desc">${chair.desc}</div>
+
+    <button class="btn-similar" onclick="searchSimilar('${chair.id}');closeDetail()">
+      この椅子の感性で類似検索する →
+    </button>`;
+
+  document.getElementById('detail-overlay').classList.add('open');
+  requestAnimationFrame(()=>document.getElementById('detail-panel').classList.add('open'));
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+  setTimeout(()=>document.getElementById('detail-overlay').classList.remove('open'), 420);
+}
+
+function searchSimilar(id) {
+  const chair = CHAIRS.find(c=>c.id===id);
+  if(!chair) return;
+  A_KEYS.forEach(k=>{ SEARCH[k] = chair[k]; });
+  PRESET = null;
+  goTo('sensory');
+}
+
+/* ════════════════════════════════════════════════════
+   FREE-TEXT SEARCH
+════════════════════════════════════════════════════ */
+const KEYWORD_MAP = [
+  {words:['座りやすい','快適','ラク','リラックス','休憩','くつろぎ'],
+   axes:{axis2:85,axis9:18,axis15:80}},
+  {words:['疲れない','長時間','腰','体に優しい'],
+   axes:{axis2:80,axis9:15,axis15:85}},
+  {words:['フローリング','北欧','スカンジナビア','デンマーク','フィンランド'],
+   axes:{axis7:28,axis8:72,axis12:75,axis2:70}},
+  {words:['日本','和','畳','和室','日本的'],
+   axes:{axis7:90,axis11:80,axis3:70,axis12:25}},
+  {words:['民藝','工芸','手仕事','職人','木'],
+   axes:{axis3:82,axis11:80,axis2:72}},
+  {words:['建築','緊張感','彫刻','存在感','アート'],
+   axes:{axis1:88,axis6:85,axis8:70}},
+  {words:['ミニマル','シンプル','無駄がない','すっきり'],
+   axes:{axis8:90,axis6:85,axis1:60}},
+  {words:['機械','工業','スチール','バウハウス','金属'],
+   axes:{axis4:88,axis1:75,axis12:82,axis8:78}},
+  {words:['温かい','ナチュラル','有機的','柔らかい'],
+   axes:{axis2:82,axis3:75,axis11:62,axis8:35}},
+  {words:['ポップ','カラフル','遊び','ユニーク','個性的'],
+   axes:{axis13:80,axis5:75,axis14:60}},
+  {words:['ポストモダン','実験的','コンセプト','概念'],
+   axes:{axis13:90,axis1:70,axis6:78}},
+  {words:['未来','SF','宇宙','テクノロジー','近未来'],
+   axes:{axis14:90,axis4:82,axis8:70}},
+  {words:['ヴィンテージ','クラシック','アンティーク','歴史'],
+   axes:{axis12:82,axis3:68,axis2:70,axis14:15}},
+  {words:['軽い','軽量','コンパクト'],
+   axes:{axis4:80,axis8:75,axis1:45}},
+  {words:['高級','ラグジュアリー','上質','贅沢'],
+   axes:{axis2:85,axis3:80,axis6:88}},
+  {words:['インテリア','リビング','部屋'],
+   axes:{axis6:75,axis8:65,axis2:65}},
+];
+
+/* ── AI settings ── */
+let GEMINI_KEY = localStorage.getItem('dce_gemini_key') || '';
+
+function updateAIDot() {
+  const dot = document.getElementById('fs-ai-dot');
+  const btn = document.getElementById('fs-ai-toggle');
+  if (dot) dot.classList.toggle('on', !!GEMINI_KEY);
+  if (btn) btn.classList.toggle('ai-on', !!GEMINI_KEY);
+}
+
+function toggleAISettings() {
+  const panel = document.getElementById('fs-ai-panel');
+  const isOpen = panel.classList.toggle('open');
+  if (isOpen && GEMINI_KEY) {
+    const inp = document.getElementById('fs-ai-key');
+    inp.value = GEMINI_KEY.slice(0,8) + '••••••••••••••••';
+    document.getElementById('fs-ai-status').textContent = '✓ APIキー設定済み';
+    document.getElementById('fs-ai-status').className = 'fs-ai-status ok';
+  }
+}
+
+function saveGeminiKey() {
+  const val = document.getElementById('fs-ai-key').value.trim();
+  if (!val || val.includes('•')) {
+    document.getElementById('fs-ai-status').textContent = '有効なAPIキーを入力してください';
+    document.getElementById('fs-ai-status').className = 'fs-ai-status err';
+    return;
+  }
+  GEMINI_KEY = val;
+  localStorage.setItem('dce_gemini_key', val);
+  document.getElementById('fs-ai-key').value = val.slice(0,8) + '••••••••••••••••';
+  document.getElementById('fs-ai-status').textContent = '✓ 保存しました。AI検索が有効です。';
+  document.getElementById('fs-ai-status').className = 'fs-ai-status ok';
+  updateAIDot();
+}
+
+function clearGeminiKey() {
+  GEMINI_KEY = '';
+  localStorage.removeItem('dce_gemini_key');
+  document.getElementById('fs-ai-key').value = '';
+  document.getElementById('fs-ai-status').textContent = 'APIキーを削除しました';
+  document.getElementById('fs-ai-status').className = 'fs-ai-status';
+  updateAIDot();
+}
+
+/* ════════════════════════════════════════════════════
+   ILLUSTRATION HELPERS
+════════════════════════════════════════════════════ */
+function chairImgSrcs(id) {
+  return ['png','jpg','jpeg','svg','webp'].map(ext => `images/${id}.${ext}`);
+}
+
+function getChairImg(id) {
+  return localStorage.getItem('dce_img_' + id) || null;
+}
+
+function saveChairImg(id, dataURL) {
+  localStorage.setItem('dce_img_' + id, dataURL);
+  // 詳細パネルが開いていれば更新
+  const wrap = document.getElementById('illust-' + id);
+  if (wrap) _setIllustSrc(wrap, id, dataURL);
+  // サムネイル更新
+  document.querySelectorAll(`.chair-thumb[data-id="${id}"] img`).forEach(img => {
+    img.src = dataURL;
+  });
+}
+
+function deleteChairImg(id) {
+  localStorage.removeItem('dce_img_' + id);
+  const wrap = document.getElementById('illust-' + id);
+  if (wrap) {
+    _setIllustSrc(wrap, id, null);
+  }
+  document.querySelectorAll(`.chair-thumb[data-id="${id}"] img`).forEach(img => {
+    img.src = chairImgSrcs(id)[0];
+    img.onerror = () => chairThumbFallback(img, id, 1);
+  });
+}
+
+function _setIllustSrc(wrap, id, src) {
+  let img = wrap.querySelector('img');
+  if (!img) {
+    wrap.innerHTML = '';
+    img = document.createElement('img');
+    img.alt = id;
+    wrap.appendChild(img);
+  }
+  if (src) {
+    img.src = src;
+    img.onerror = null;
+  } else {
+    img.src = chairImgSrcs(id)[0];
+    img.onerror = () => chairImgFallback(img, id, 1);
+  }
+}
+
+// 詳細パネル用（大）
+function chairIllustHTML(chair) {
+  const saved = getChairImg(chair.id);
+  const src = saved || chairImgSrcs(chair.id)[0];
+  const onerror = saved ? '' : `onerror="chairImgFallback(this,'${chair.id}',1)"`;
+  return `<div class="chair-illust-wrap" id="illust-${chair.id}"
+      onclick="illustClick('${chair.id}')"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="illustDrop(event,'${chair.id}')">
+    <img src="${src}" ${onerror} alt="${chair.name}">
+    <div class="illust-drop-hint">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      クリックまたはドロップで画像追加
+    </div>
+    ${saved ? `<button class="illust-del-btn" onclick="event.stopPropagation();deleteChairImg('${chair.id}')">削除</button>` : ''}
+  </div>`;
+}
+
+// サムネイル用（小）
+function chairThumbHTML(chair) {
+  const saved = getChairImg(chair.id);
+  const src = saved || chairImgSrcs(chair.id)[0];
+  const onerror = saved ? '' : `onerror="chairThumbFallback(this,'${chair.id}',1)"`;
+  return `<div class="chair-thumb" data-id="${chair.id}">
+    <img src="${src}" ${onerror} alt="">
+  </div>`;
+}
+
+// 大画像フォールバック（複数フォーマット試行 → プレースホルダー）
+function chairImgFallback(el, id, idx) {
+  const saved = getChairImg(id);
+  if (saved) { el.src = saved; el.onerror = null; return; }
+  const srcs = chairImgSrcs(id);
+  if (idx < srcs.length) {
+    el.src = srcs[idx];
+    el.onerror = () => chairImgFallback(el, id, idx + 1);
+  } else {
+    // imgのみをプレースホルダーに差し替え（drop hint等の兄弟要素は保持）
+    const ph = document.createElement('div');
+    ph.className = 'chair-illust-ph';
+    ph.innerHTML = `<svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <rect x="8" y="28" width="32" height="3" rx="1" fill="#DDD5C5"/>
+        <rect x="10" y="14" width="28" height="14" rx="2" fill="#EDE7DC" stroke="#DDD5C5" stroke-width="1"/>
+        <rect x="10" y="31" width="3" height="10" rx="1" fill="#DDD5C5"/>
+        <rect x="35" y="31" width="3" height="10" rx="1" fill="#DDD5C5"/>
+      </svg>
+      <span class="chair-illust-ph-id">${id}</span>`;
+    el.parentNode.replaceChild(ph, el);
+  }
+}
+
+// サムネイルフォールバック
+function chairThumbFallback(el, id, idx) {
+  const saved = getChairImg(id);
+  if (saved) { el.src = saved; el.onerror = null; return; }
+  const srcs = chairImgSrcs(id);
+  if (idx < srcs.length) {
+    el.src = srcs[idx];
+    el.onerror = () => chairThumbFallback(el, id, idx + 1);
+  } else {
+    el.parentNode.innerHTML = `<div class="chair-thumb-ph">${id.replace('CHR-','')}</div>`;
+  }
+}
+
+// ドラッグ&ドロップ処理
+function illustDrop(event, id) {
+  event.preventDefault();
+  const wrap = document.getElementById('illust-' + id);
+  if (wrap) wrap.classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  _readAndSaveImg(id, file);
+}
+
+// クリックでファイル選択
+function illustClick(id) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (file) _readAndSaveImg(id, file);
+  };
+  input.click();
+}
+
+function _readAndSaveImg(id, file) {
+  const reader = new FileReader();
+  reader.onload = e => saveChairImg(id, e.target.result);
+  reader.readAsDataURL(file);
+}
+
+/* ── DB サマリー生成 ── */
+function buildChairSummary() {
+  return CHAIRS.map(c =>
+    `・${c.name}（${c.designer}/${c.year}/${c.origin}）${c.desc.slice(0,45)}…`
+  ).join('\n');
+}
+
+/* ── Gemini API call — DB参照 + AI補足の2段階 ── */
+async function callGemini(q) {
+  const dbSummary = buildChairSummary();
+  const prompt = `あなたは椅子・インテリアデザインの専門家です。以下の手順で回答してください。
+
+【データベース（30脚）】
+${dbSummary}
+
+【感性軸（各0〜100整数）】
+axis1:建築的緊張感(穏やか→張りつめた) axis2:身体を包む優しさ(冷徹→温かい)
+axis3:手仕事感(工業的→手作業) axis4:工業的合理性(有機的→機械的)
+axis5:素材的対比(均質→対照的) axis6:形態言語(装飾的→削ぎ落とし)
+axis7:日本文脈(グローバル→日本的) axis8:ミニマル性(装飾的→ミニマル)
+axis9:快適性(疲れやすい→快適) axis10:素材対比Ⅱ(均質→対照的)
+axis11:民藝性(工業的→民藝的) axis12:西洋近代性(非西洋→西洋近代)
+axis13:ポストモダン性(モダン→ポストモダン) axis14:未来性(現代的→未来的)
+axis15:身体主導度(椅子に従う→身体が決める)
+
+【検索クエリ】「${q}」
+
+手順：
+1. まず上記データベースの椅子を参照し、クエリに合う感性プロファイルを15軸スコアで表現する
+2. データベース内に適切な候補がある確信度を db_confidence（0〜100）で示す
+3. db_confidence が 65 未満の場合のみ、ai_supplement にデータベース外の知識から補足情報を日本語200字以内で記述する（データベース内に良い候補がある場合は空文字にする）
+
+JSONのみで回答（説明不要）：
+{"axis1":50,"axis2":50,"axis3":50,"axis4":50,"axis5":50,"axis6":50,"axis7":50,"axis8":50,"axis9":50,"axis10":50,"axis11":50,"axis12":50,"axis13":50,"axis14":50,"axis15":50,"db_confidence":80,"ai_supplement":""}`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+    {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        contents: [{parts: [{text: prompt}]}],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 512,
+          responseMimeType: 'application/json'
+        }
+      })
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+  // Geminiは ```json ... ``` で返すことがある → 複数パターンで抽出
+  let jsonStr;
+  const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlock) {
+    jsonStr = codeBlock[1].trim();
+  } else {
+    // { から最後の } までを取得（非greedy だと途中で止まるので lastIndexOf を使う）
+    const s = text.indexOf('{');
+    const e = text.lastIndexOf('}');
+    if (s !== -1 && e > s) jsonStr = text.slice(s, e + 1);
+  }
+  if (!jsonStr) throw new Error(`レスポンスからJSONを取得できませんでした`);
+  try {
+    return JSON.parse(jsonStr);
+  } catch(parseErr) {
+    throw new Error(`JSON解析エラー: ${parseErr.message}`);
+  }
+}
+
+/* ── Free search (AI or keyword fallback) ── */
+async function applyFreeSearch() {
+  const q = document.getElementById('free-search-input').value.trim();
+  if (!q) return;
+
+  if (GEMINI_KEY) {
+    /* ── AI mode (DB参照 → AI補足の2段階) ── */
+    const btn = document.getElementById('fs-btn');
+    btn.classList.add('loading');
+    document.getElementById('fs-tags').innerHTML =
+      '<span class="fs-tag fs-tag-loading">DBを参照しながらAIが解析中…</span>';
+    try {
+      const axes = await callGemini(q);
+      const newSearch = {axis1:50,axis2:50,axis3:50,axis4:50,axis5:50,axis6:50,axis7:50,
+                         axis8:50,axis9:50,axis10:50,axis11:50,axis12:50,axis13:50,axis14:50,axis15:50};
+      A_KEYS.forEach(k => {
+        if (typeof axes[k] === 'number')
+          newSearch[k] = Math.max(0, Math.min(100, Math.round(axes[k])));
+      });
+      SEARCH = newSearch;
+      PRESET = null;
+
+      // DB信頼度と補足テキストを保存
+      const conf = typeof axes.db_confidence === 'number' ? axes.db_confidence : 80;
+      AI_SUPPLEMENT = (conf < 65 && axes.ai_supplement) ? axes.ai_supplement : '';
+      AI_QUERY_LABEL = q;
+
+      const confLabel = conf >= 65 ? `DB一致度 ${conf}%` : `DB一致度 ${conf}% — AI補足あり`;
+      document.getElementById('fs-tags').innerHTML =
+        `<span class="fs-tag">AI: ${q}</span><span class="fs-tag-conf">${confLabel}</span>`;
+      renderSliders();
+      renderResults();
+    } catch(e) {
+      document.getElementById('fs-tags').innerHTML =
+        `<span class="fs-tag fs-tag-miss">エラー: ${e.message}</span>`;
+    } finally {
+      btn.classList.remove('loading');
+    }
+    return;
+  }
+
+  /* ── Keyword fallback ── */
+  const base = {axis1:50,axis2:50,axis3:50,axis4:50,axis5:50,axis6:50,axis7:50,
+                axis8:50,axis9:50,axis10:50,axis11:50,axis12:50,axis13:50,axis14:50,axis15:50};
+  const matched = [];
+  KEYWORD_MAP.forEach(entry => {
+    const hit = entry.words.find(w => q.includes(w));
+    if (hit) {
+      matched.push(hit);
+      Object.entries(entry.axes).forEach(([k, v]) => {
+        base[k] = base[k] + (v - 50) * 0.7;
+      });
+    }
+  });
+  if (matched.length === 0) {
+    document.getElementById('fs-tags').innerHTML =
+      `<span class="fs-tag fs-tag-miss">キーワード不一致 — AI設定でより自由に検索できます</span>`;
+    return;
+  }
+  Object.keys(base).forEach(k => {
+    base[k] = Math.max(0, Math.min(100, Math.round(base[k])));
+  });
+  SEARCH = base;
+  PRESET = null;
+  document.getElementById('fs-tags').innerHTML =
+    matched.map(w => `<span class="fs-tag">${w}</span>`).join('');
+  renderSliders();
+  renderResults();
+}
+
+/* ════════════════════════════════════════════════════
+   ROUTING
+════════════════════════════════════════════════════ */
+function goTo(name) {
+  ['landing','sensory','browse','text'].forEach(v=>{
+    document.getElementById('v-'+v).classList.remove('active');
+  });
+  document.getElementById('v-'+name).classList.add('active');
+
+  ['sensory','browse','text'].forEach(v=>{
+    const b = document.getElementById('nb-'+v);
+    if(b) b.classList.toggle('active', v===name);
+  });
+
+  if(name==='sensory') { renderSliders(); renderResults(); }
+  if(name==='browse')  { renderBrowse(); }
+  if(name==='text')    {
+    runTextSearch('');
+    setTimeout(()=>{ const el=document.getElementById('text-input'); if(el) el.focus(); }, 80);
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   GOOGLE SHEETS 動的読み込み
+════════════════════════════════════════════════════ */
+const SHEET_ID  = '1hMzO4ENQKaTVGLIRMRwjwURT_ix6H-Rm6P4faJ5fXck';
+const SHEET_CSV = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else inQ = false;
+      } else field += ch;
+    } else {
+      if      (ch === '"') inQ = true;
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field); field = ''; rows.push(row); row = []; }
+      else if (ch !== '\r') field += ch;
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function setSyncDot(state, title) {
+  const d = document.getElementById('sync-dot');
+  if (!d) return;
+  d.className = 'sync-dot ' + state;
+  d.title = title;
+}
+
+async function loadSheetData() {
+  setSyncDot('loading', 'スプレッドシートを取得中…');
+  try {
+    const res = await fetch(SHEET_CSV);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('empty');
+
+    // ヘッダー行を動的に検索（タイトル行・説明行をスキップ）
+    const headerRowIdx = rows.findIndex(r => r.some(c => c.includes('椅子ID')));
+    if (headerRowIdx < 0) throw new Error('header not found');
+    const h = rows[headerRowIdx];
+    const dataRows = rows.slice(headerRowIdx + 1);
+
+    const col = (...names) => {
+      for (const n of names) {
+        const i = h.findIndex(c => c.includes(n));
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+    const idCol       = col('椅子ID');
+    const nameCol     = col('椅子名（日本語）');
+    const designerCol = col('デザイナー名');
+    const yearCol     = col('発表年');
+    const originCol   = col('原産国');
+    const materialCol = col('主要素材');
+    const descCol     = col('批評文_統一版');
+    const descFbCol   = col('批評文');
+    const axisIdx = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮']
+      .map(n => h.findIndex(c => c.startsWith(n)));
+
+    const newChairs = [];
+    for (let i = 0; i < dataRows.length; i++) {
+      const r = dataRows[i];
+      const id = (r[idCol] || '').trim();
+      if (!id.startsWith('CHR-')) continue;
+      const chair = {
+        id,
+        seq:      newChairs.length,   // スプレッドシートの行順を保持
+        name:     (r[nameCol]     || '').trim(),
+        designer: (r[designerCol] || '').trim(),
+        year:     parseInt(r[yearCol]) || 0,
+        origin:   (r[originCol]   || '').trim(),
+        material: (r[materialCol] || '').trim(),
+        desc:     ((r[descCol] || r[descFbCol] || '')).trim(),
+      };
+      axisIdx.forEach((ci, ai) => {
+        chair[`axis${ai+1}`] = ci >= 0 && r[ci] !== '' ? (parseInt(r[ci]) || 50) : 50;
+      });
+      newChairs.push(chair);
+    }
+    if (newChairs.length === 0) throw new Error('no chairs');
+
+    // CHAIRS 差し替え
+    CHAIRS.length = 0;
+    newChairs.forEach(c => CHAIRS.push(c));
+
+    // GOLDEN 再計算
+    computeGolden();
+
+    // UI 更新
+    const cnt = CHAIRS.length;
+    const setTxt = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+    setTxt('nav-count',    `${cnt}脚`);
+    setTxt('landing-count', `${cnt}脚`);
+    setTxt('ec-count',     `${cnt}脚`);
+    setTxt('ph-title-browse', `全椅子一覧 — ${cnt}脚`);
+    setSyncDot('ok', `✓ ${cnt}脚 · スプレッドシートから最新取得`);
+
+    // 現在の画面を再描画
+    renderBrowse();
+    renderResults();
+    runTextSearch('');
+    console.log(`[DCE] シートから ${cnt} 脚読み込み完了`);
+    return cnt;
+  } catch (e) {
+    console.warn('[DCE] シート読み込み失敗:', e);
+    setSyncDot('err', 'スプレッドシート取得失敗 — ローカルデータを使用中');
+    return 0;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════ */
+renderBrowse();
+runTextSearch('');
+updateAIDot();
+// スプレッドシートから最新データを非同期取得
+loadSheetData();
+</script>
+</body>
+</html>
