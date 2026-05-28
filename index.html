@@ -1387,7 +1387,78 @@
     ::-webkit-scrollbar { width: 3px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); }
+
+    /* ══ PEOPLE VIEW ══ */
+    #v-people.active { overflow-y: auto; }
+
+    .people-header { padding: 2.5rem 2rem 1rem; border-bottom: 1px solid var(--border-lt); }
+    .people-filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+    .pf-btn { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.3rem 0.7rem; border: 1px solid var(--border-lt); background: none; color: var(--text-sub); cursor: pointer; border-radius: 2px; transition: all 0.2s; }
+    .pf-btn.active, .pf-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .designer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1px;
+      background: var(--border-lt);
+      border-top: 1px solid var(--border-lt);
+    }
+    .designer-card {
+      background: var(--bg);
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .designer-card:hover { background: var(--bg-card); }
+    .dc-id { font-size: 0.55rem; letter-spacing: 0.2em; color: var(--border); text-transform: uppercase; }
+    .dc-name { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; line-height: 1.2; }
+    .dc-name-en { font-size: 0.65rem; letter-spacing: 0.1em; color: var(--text-sub); }
+    .dc-meta { font-size: 0.65rem; color: var(--text-sub); letter-spacing: 0.05em; }
+    .dc-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.2rem; }
+    .dc-tag { font-size: 0.55rem; letter-spacing: 0.1em; padding: 0.15rem 0.45rem; border: 1px solid var(--border-lt); color: var(--text-sub); border-radius: 2px; }
+    .dc-scores { display: flex; gap: 0.15rem; margin-top: 0.4rem; align-items: flex-end; height: 24px; }
+    .dc-score-bar { width: 100%; background: var(--border-lt); border-radius: 1px; position: relative; flex: 1; }
+    .dc-score-fill { position: absolute; bottom: 0; left: 0; right: 0; background: var(--text); border-radius: 1px; }
+    .dc-score-label { font-size: 0.5rem; color: var(--border); text-align: center; margin-top: 0.2rem; }
+    .dc-desc { font-size: 0.7rem; color: var(--text-sub); line-height: 1.6; }
+
+    /* ══ DESIGNER DETAIL PANEL ══ */
+    #dsn-overlay { position: fixed; inset: 0; background: rgba(26,25,24,0.4); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    #dsn-overlay.open { opacity: 1; pointer-events: all; }
+    #dsn-panel {
+      position: fixed; top: 0; right: -100%; width: min(560px, 100vw);
+      height: 100vh; overflow-y: auto;
+      background: var(--bg); z-index: 201;
+      transition: right 0.42s cubic-bezier(.4,0,.2,1);
+      box-shadow: -4px 0 32px rgba(0,0,0,.12);
+    }
+    #dsn-panel.open { right: 0; }
+    .dsn-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.2rem 2rem; border-bottom: 1px solid var(--border-lt); position: sticky; top: 0; background: var(--bg); z-index: 1; }
+    .dsn-nav-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-sub); }
+    .dsn-body { padding: 2.5rem 2rem 4rem; }
+    .dsn-profession { font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.5rem; }
+    .dsn-name { font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; line-height: 1.1; margin-bottom: 0.2rem; }
+    .dsn-name-en { font-size: 0.85rem; letter-spacing: 0.1em; color: var(--text-sub); margin-bottom: 1rem; }
+    .dsn-meta-row { display: flex; gap: 1.5rem; font-size: 0.65rem; color: var(--text-sub); margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-lt); padding-bottom: 1rem; }
+    .dsn-desc { font-size: 0.8rem; line-height: 1.9; color: var(--text-sub); margin-bottom: 2rem; }
+    .dsn-section-head { font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--border); margin: 1.5rem 0 0.8rem; }
+    .dsn-score-row { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.5rem; }
+    .dsn-score-name { font-size: 0.65rem; color: var(--text-sub); width: 70px; flex-shrink: 0; }
+    .dsn-score-track { flex: 1; height: 3px; background: var(--border-lt); border-radius: 2px; }
+    .dsn-score-fill { height: 100%; background: var(--text); border-radius: 2px; transition: width 0.6s; }
+    .dsn-score-val { font-size: 0.6rem; color: var(--border); width: 28px; text-align: right; }
+    .dsn-tag-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .dsn-tag { font-size: 0.6rem; letter-spacing: 0.1em; padding: 0.2rem 0.55rem; border: 1px solid var(--border-lt); color: var(--text-sub); }
+    .dsn-chair-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .dsn-chair-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border-lt); cursor: pointer; }
+    .dsn-chair-row:hover { opacity: 0.7; }
+    .dsn-chair-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; }
+    .dsn-chair-year { font-size: 0.6rem; color: var(--text-sub); }
+    .dsn-relation-list { font-size: 0.72rem; line-height: 1.8; color: var(--text-sub); }
   </style>
+<!-- ローカル設定（config.jsが存在する場合のみ読み込む） -->
+<script src="config.js" onerror="void 0"></script>
 </head>
 <body>
 
@@ -1400,6 +1471,7 @@
       <button class="nav-btn" id="nb-sensory" onclick="goTo('sensory')">感性検索</button>
       <button class="nav-btn" id="nb-browse"  onclick="goTo('browse')">全椅子一覧</button>
       <button class="nav-btn" id="nb-text"    onclick="goTo('text')">テキスト検索</button>
+      <button class="nav-btn" id="nb-people"  onclick="goTo('people')">人物</button>
     </div>
     <div class="nav-tag"><span id="nav-count">30脚</span> · 15軸
       <span class="sync-dot" id="sync-dot" title="データ同期状態"></span>
@@ -1537,8 +1609,33 @@
       <div class="text-results-wrap" id="text-results"><!-- JS --></div>
     </div>
 
+    <!-- ══ PEOPLE VIEW ══ -->
+    <div id="v-people" class="view">
+      <div class="people-header">
+        <div class="eyebrow">People</div>
+        <div class="ph-title">デザイナー・建築家</div>
+        <div class="people-filter-bar" id="pf-bar">
+          <button class="pf-btn active" onclick="filterDesigners('all',this)">すべて</button>
+          <button class="pf-btn" onclick="filterDesigners('デザイナー',this)">デザイナー</button>
+          <button class="pf-btn" onclick="filterDesigners('建築家',this)">建築家</button>
+          <button class="pf-btn" onclick="filterDesigners('デザイナー・建築家',this)">複合</button>
+        </div>
+      </div>
+      <div class="designer-grid" id="designer-grid"><!-- JS --></div>
+    </div>
+
   </div><!-- end .app-body -->
 </div><!-- end .app -->
+
+<!-- ══ DESIGNER DETAIL PANEL ══ -->
+<div id="dsn-overlay" onclick="closeDesigner()"></div>
+<div id="dsn-panel">
+  <div class="dsn-nav">
+    <div class="dsn-nav-label">人物の詳細</div>
+    <button class="btn-close" onclick="closeDesigner()">✕ &nbsp;閉じる</button>
+  </div>
+  <div class="dsn-body" id="dsn-body"><!-- JS --></div>
+</div>
 
 <!-- ══ DETAIL PANEL ══ -->
 <div id="detail-overlay" onclick="closeDetail()"></div>
@@ -2118,9 +2215,20 @@ function openDetail(id) {
     }).join('')
   ).join('');
 
+  // デザイナーDBとのリンク検索
+  const relDesigner = DESIGNERS.find(d =>
+    d.name && chair.designer && (
+      chair.designer.includes(d.name) || d.name.includes(chair.designer.split('・')[0])
+    )
+  ) || (chair.id ? DESIGNERS.find(d => (d.chairIds||'').includes(chair.id)) : null);
+
   document.getElementById('dp-body').innerHTML = `
     <div class="dp-name">${chair.name}</div>
     <div class="dp-meta">${chair.designer} · ${chair.year} · ${chair.origin}</div>
+    ${relDesigner ? `<button onclick="closeDetail();setTimeout(()=>openDesigner('${relDesigner.id}'),350)"
+      style="font-size:0.6rem;letter-spacing:0.12em;padding:0.2rem 0.65rem;border:1px solid var(--border-lt);background:none;color:var(--accent);cursor:pointer;margin-top:0.4rem;display:inline-block;">
+      → ${relDesigner.name} の人物詳細
+    </button>` : ''}
 
     ${chairIllustHTML(chair)}
 
@@ -2210,6 +2318,10 @@ const KEYWORD_MAP = [
 ];
 
 /* ── AI settings ── */
+// config.jsのキーをlocalStorageへ自動反映
+if (window.DCE_CONFIG?.geminiKey && window.DCE_CONFIG.geminiKey !== 'ここにAPIキーを貼り付ける') {
+  localStorage.setItem('dce_gemini_key', window.DCE_CONFIG.geminiKey);
+}
 let GEMINI_KEY = localStorage.getItem('dce_gemini_key') || '';
 
 function updateAIDot() {
@@ -2257,8 +2369,11 @@ function clearGeminiKey() {
 /* ════════════════════════════════════════════════════
    ILLUSTRATION HELPERS
 ════════════════════════════════════════════════════ */
-function chairImgSrcs(id) {
-  return ['png','jpg','jpeg','svg','webp'].map(ext => `images/${id}.${ext}`);
+function chairImgSrcs(id, customFile) {
+  const exts = ['png','jpg','jpeg','svg','webp'];
+  // スプシに画像ファイル名が指定されていればそれを最優先
+  if (customFile) return [`images/${customFile}`, ...exts.map(e => `images/${id}.${e}`)];
+  return exts.map(e => `images/${id}.${e}`);
 }
 
 function getChairImg(id) {
@@ -2282,8 +2397,9 @@ function deleteChairImg(id) {
   if (wrap) {
     _setIllustSrc(wrap, id, null);
   }
+  const chair = CHAIRS.find(c => c.id === id);
   document.querySelectorAll(`.chair-thumb[data-id="${id}"] img`).forEach(img => {
-    img.src = chairImgSrcs(id)[0];
+    img.src = chairImgSrcs(id, chair?.image)[0];
     img.onerror = () => chairThumbFallback(img, id, 1);
   });
 }
@@ -2300,7 +2416,8 @@ function _setIllustSrc(wrap, id, src) {
     img.src = src;
     img.onerror = null;
   } else {
-    img.src = chairImgSrcs(id)[0];
+    const chair = CHAIRS.find(c => c.id === id);
+    img.src = chairImgSrcs(id, chair?.image)[0];
     img.onerror = () => chairImgFallback(img, id, 1);
   }
 }
@@ -2308,7 +2425,7 @@ function _setIllustSrc(wrap, id, src) {
 // 詳細パネル用（大）
 function chairIllustHTML(chair) {
   const saved = getChairImg(chair.id);
-  const src = saved || chairImgSrcs(chair.id)[0];
+  const src = saved || chairImgSrcs(chair.id, chair.image)[0];
   const onerror = saved ? '' : `onerror="chairImgFallback(this,'${chair.id}',1)"`;
   return `<div class="chair-illust-wrap" id="illust-${chair.id}"
       onclick="illustClick('${chair.id}')"
@@ -2327,7 +2444,7 @@ function chairIllustHTML(chair) {
 // サムネイル用（小）
 function chairThumbHTML(chair) {
   const saved = getChairImg(chair.id);
-  const src = saved || chairImgSrcs(chair.id)[0];
+  const src = saved || chairImgSrcs(chair.id, chair.image)[0];
   const onerror = saved ? '' : `onerror="chairThumbFallback(this,'${chair.id}',1)"`;
   return `<div class="chair-thumb" data-id="${chair.id}">
     <img src="${src}" ${onerror} alt="">
@@ -2338,7 +2455,8 @@ function chairThumbHTML(chair) {
 function chairImgFallback(el, id, idx) {
   const saved = getChairImg(id);
   if (saved) { el.src = saved; el.onerror = null; return; }
-  const srcs = chairImgSrcs(id);
+  const chair = CHAIRS.find(c => c.id === id);
+  const srcs = chairImgSrcs(id, chair?.image);
   if (idx < srcs.length) {
     el.src = srcs[idx];
     el.onerror = () => chairImgFallback(el, id, idx + 1);
@@ -2361,7 +2479,8 @@ function chairImgFallback(el, id, idx) {
 function chairThumbFallback(el, id, idx) {
   const saved = getChairImg(id);
   if (saved) { el.src = saved; el.onerror = null; return; }
-  const srcs = chairImgSrcs(id);
+  const chair = CHAIRS.find(c => c.id === id);
+  const srcs = chairImgSrcs(id, chair?.image);
   if (idx < srcs.length) {
     el.src = srcs[idx];
     el.onerror = () => chairThumbFallback(el, id, idx + 1);
@@ -2548,12 +2667,14 @@ async function applyFreeSearch() {
    ROUTING
 ════════════════════════════════════════════════════ */
 function goTo(name) {
-  ['landing','sensory','browse','text'].forEach(v=>{
-    document.getElementById('v-'+v).classList.remove('active');
+  ['landing','sensory','browse','text','people'].forEach(v=>{
+    const el = document.getElementById('v-'+v);
+    if(el) el.classList.remove('active');
   });
-  document.getElementById('v-'+name).classList.add('active');
+  const target = document.getElementById('v-'+name);
+  if(target) target.classList.add('active');
 
-  ['sensory','browse','text'].forEach(v=>{
+  ['sensory','browse','text','people'].forEach(v=>{
     const b = document.getElementById('nb-'+v);
     if(b) b.classList.toggle('active', v===name);
   });
@@ -2564,13 +2685,151 @@ function goTo(name) {
     runTextSearch('');
     setTimeout(()=>{ const el=document.getElementById('text-input'); if(el) el.focus(); }, 80);
   }
+  if(name==='people')  { renderDesigners(); }
+}
+
+/* ════════════════════════════════════════════════════
+   DESIGNER DATA
+════════════════════════════════════════════════════ */
+let DESIGNERS = [];
+let DSN_FILTER = 'all';
+const D_SCORE_KEYS = ['建築性','工業性','手仕事性','ミニマル性','装飾性','詩的性','緊張感','温度感','未来性','土着性'];
+
+function renderDesigners() {
+  const grid = document.getElementById('designer-grid');
+  if (!grid) return;
+  const list = DSN_FILTER === 'all'
+    ? DESIGNERS
+    : DESIGNERS.filter(d => (d.profession || '').includes(DSN_FILTER));
+  if (list.length === 0) {
+    grid.innerHTML = '<div style="padding:3rem 2rem;color:var(--text-sub);font-size:0.8rem;">' +
+      (DESIGNERS.length === 0 ? 'データを読み込み中…' : '該当なし') + '</div>';
+    return;
+  }
+  grid.innerHTML = list.map(d => {
+    const tags = (d.tags || '').split(/[,、／]/).map(t=>t.trim()).filter(Boolean).slice(0,4);
+    const scores = D_SCORE_KEYS.map((k,i) => {
+      const v = d['score_'+i] || 0;
+      return `<div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+        <div class="dc-score-bar" style="height:${Math.max(4,v*0.2)}px;">
+          <div class="dc-score-fill" style="height:100%;"></div>
+        </div>
+      </div>`;
+    });
+    const lifespan = [d.birth, d.death].filter(Boolean).join('–');
+    const meta = [d.country, lifespan, d.activePeriod].filter(Boolean).join(' · ');
+    return `<div class="designer-card" onclick="openDesigner('${d.id}')">
+      <div class="dc-id">${d.id}</div>
+      <div class="dc-name">${d.name || ''}</div>
+      ${d.nameEn ? `<div class="dc-name-en">${d.nameEn}</div>` : ''}
+      ${meta ? `<div class="dc-meta">${meta}</div>` : ''}
+      ${tags.length ? `<div class="dc-tags">${tags.map(t=>`<span class="dc-tag">${t}</span>`).join('')}</div>` : ''}
+      <div class="dc-scores">${scores.join('')}</div>
+      ${d.descShort ? `<div class="dc-desc">${d.descShort}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function filterDesigners(type, btn) {
+  DSN_FILTER = type;
+  document.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderDesigners();
+}
+
+function openDesigner(id) {
+  const d = DESIGNERS.find(x => x.id === id);
+  if (!d) return;
+  const body = document.getElementById('dsn-body');
+  if (!body) return;
+
+  const lifespan = [d.birth, d.death].filter(Boolean).join('–');
+  const meta = [
+    d.country ? `<span>${d.country}</span>` : '',
+    lifespan  ? `<span>${lifespan}</span>` : '',
+    d.activePeriod ? `<span>${d.activePeriod}</span>` : '',
+    d.mainMaterial ? `<span>${d.mainMaterial}</span>` : '',
+  ].filter(Boolean).join('');
+
+  const tags = (d.tags || '').split(/[,、／]/).map(t=>t.trim()).filter(Boolean);
+  const keywords = (d.keywords || '').split(/[,、／]/).map(t=>t.trim()).filter(Boolean);
+  const allTags = [...new Set([...tags, ...keywords])];
+
+  const scoreRows = D_SCORE_KEYS.map((k, i) => {
+    const v = d['score_'+i] || 0;
+    return `<div class="dsn-score-row">
+      <div class="dsn-score-name">${k}</div>
+      <div class="dsn-score-track"><div class="dsn-score-fill" style="width:${v}%"></div></div>
+      <div class="dsn-score-val">${v}</div>
+    </div>`;
+  }).join('');
+
+  // related chairs
+  const relChairIds = (d.chairIds || '').split(/[,、\s]/).map(s=>s.trim()).filter(s=>s.startsWith('CHR-'));
+  const relChairs = relChairIds.map(cid => {
+    const c = CHAIRS.find(x => x.id === cid);
+    if (!c) return '';
+    return `<div class="dsn-chair-row" onclick="closeDesigner();setTimeout(()=>openDetail('${cid}'),350)">
+      <div style="flex:1">
+        <div class="dsn-chair-name">${c.name}</div>
+        <div class="dsn-chair-year">${c.year || ''} · ${c.id}</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  // influence
+  const influenced = (d.influenced || '').trim();
+  const influencedBy = (d.influencedBy || '').trim();
+  const movement = (d.movement || '').trim();
+
+  body.innerHTML = `
+    ${d.profession ? `<div class="dsn-profession">${d.profession}</div>` : ''}
+    <div class="dsn-name">${d.name || ''}</div>
+    ${d.nameEn ? `<div class="dsn-name-en">${d.nameEn}</div>` : ''}
+    ${meta ? `<div class="dsn-meta-row">${meta}</div>` : ''}
+    ${d.descShort ? `<p class="dsn-desc">${d.descShort}</p>` : ''}
+    ${d.descLong  ? `<p class="dsn-desc" style="margin-top:0.5rem;">${d.descLong}</p>` : ''}
+
+    ${scoreRows ? `<div class="dsn-section-head">感性スコア</div>${scoreRows}` : ''}
+
+    ${allTags.length ? `
+      <div class="dsn-section-head">キーワード</div>
+      <div class="dsn-tag-list">${allTags.map(t=>`<span class="dsn-tag">${t}</span>`).join('')}</div>
+    ` : ''}
+
+    ${relChairs ? `
+      <div class="dsn-section-head">関連椅子</div>
+      <div class="dsn-chair-list">${relChairs}</div>
+    ` : ''}
+
+    ${(influenced || influencedBy || movement) ? `
+      <div class="dsn-section-head">人物・運動との関係</div>
+      <div class="dsn-relation-list">
+        ${influencedBy ? `<div>影響を受けた人物 : ${influencedBy}</div>` : ''}
+        ${influenced   ? `<div>影響を与えた人物 : ${influenced}</div>` : ''}
+        ${movement     ? `<div>関連運動 : ${movement}</div>` : ''}
+      </div>
+    ` : ''}
+  `;
+
+  document.getElementById('dsn-overlay').classList.add('open');
+  document.getElementById('dsn-panel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDesigner() {
+  document.getElementById('dsn-overlay').classList.remove('open');
+  document.getElementById('dsn-panel').classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 /* ════════════════════════════════════════════════════
    GOOGLE SHEETS 動的読み込み
 ════════════════════════════════════════════════════ */
-const SHEET_ID  = '1hMzO4ENQKaTVGLIRMRwjwURT_ix6H-Rm6P4faJ5fXck';
-const SHEET_CSV = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+const SHEET_ID   = '1hMzO4ENQKaTVGLIRMRwjwURT_ix6H-Rm6P4faJ5fXck';
+const SHEET_CSV  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+const GVIZ_BASE  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=`;
 
 function parseCSV(text) {
   const rows = [];
@@ -2630,6 +2889,7 @@ async function loadSheetData() {
     const materialCol = col('主要素材');
     const descCol     = col('批評文_統一版');
     const descFbCol   = col('批評文');
+    const imageCol    = col('画像ファイル名', 'image', 'img', '画像');
     const axisIdx = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮']
       .map(n => h.findIndex(c => c.startsWith(n)));
 
@@ -2647,6 +2907,7 @@ async function loadSheetData() {
         origin:   (r[originCol]   || '').trim(),
         material: (r[materialCol] || '').trim(),
         desc:     ((r[descCol] || r[descFbCol] || '')).trim(),
+        image:    imageCol >= 0 ? (r[imageCol] || '').trim() : '',
       };
       axisIdx.forEach((ci, ai) => {
         chair[`axis${ai+1}`] = ci >= 0 && r[ci] !== '' ? (parseInt(r[ci]) || 50) : 50;
@@ -2684,6 +2945,88 @@ async function loadSheetData() {
   }
 }
 
+async function loadDesignersData() {
+  try {
+    const url = GVIZ_BASE + encodeURIComponent('デザイナー・建築家DB');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('empty');
+
+    const h = rows[0];
+    const col = (...names) => {
+      for (const n of names) {
+        const i = h.findIndex(c => c.includes(n));
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+
+    const idCol         = col('ID');
+    const nameCol       = col('名前（日本語）');
+    const nameEnCol     = col('名前（英語）');
+    const profCol       = col('職種');
+    const countryCol    = col('国');
+    const birthCol      = col('生年');
+    const deathCol      = col('没年');
+    const activeCol     = col('活動時代', '生没年');
+    const materialCol   = col('主素材');
+    const keywordCol    = col('キーワード');
+    const tagsCol       = col('感性タグ');
+    const descSCol      = col('AI説明文（短）');
+    const descLCol      = col('AI説明文（長）');
+    const influencedByC = col('影響を受けた人物');
+    const influencedC   = col('影響を与えた人物');
+    const movementCol   = col('関連運動');
+    const chairIdsCol   = col('椅子DB連携ID');
+
+    // sensory score columns
+    const scoreIdx = D_SCORE_KEYS.map(k => h.findIndex(c => c.includes(k)));
+
+    const newDesigners = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const id = (r[idCol] || '').trim();
+      if (!id.startsWith('DES-')) continue;
+      const d = {
+        id,
+        name:         (r[nameCol]      || '').trim(),
+        nameEn:       nameEnCol >= 0   ? (r[nameEnCol]     || '').trim() : '',
+        profession:   profCol >= 0     ? (r[profCol]       || '').trim() : '',
+        country:      countryCol >= 0  ? (r[countryCol]    || '').trim() : '',
+        birth:        birthCol >= 0    ? (r[birthCol]      || '').trim() : '',
+        death:        deathCol >= 0    ? (r[deathCol]      || '').trim() : '',
+        activePeriod: activeCol >= 0   ? (r[activeCol]     || '').trim() : '',
+        mainMaterial: materialCol >= 0 ? (r[materialCol]   || '').trim() : '',
+        keywords:     keywordCol >= 0  ? (r[keywordCol]    || '').trim() : '',
+        tags:         tagsCol >= 0     ? (r[tagsCol]       || '').trim() : '',
+        descShort:    descSCol >= 0    ? (r[descSCol]      || '').trim() : '',
+        descLong:     descLCol >= 0    ? (r[descLCol]      || '').trim() : '',
+        influencedBy: influencedByC>=0 ? (r[influencedByC] || '').trim() : '',
+        influenced:   influencedC >= 0 ? (r[influencedC]   || '').trim() : '',
+        movement:     movementCol >= 0 ? (r[movementCol]   || '').trim() : '',
+        chairIds:     chairIdsCol >= 0 ? (r[chairIdsCol]   || '').trim() : '',
+      };
+      scoreIdx.forEach((ci, ai) => {
+        d['score_'+ai] = ci >= 0 && r[ci] !== '' ? (parseInt(r[ci]) || 0) : 0;
+      });
+      newDesigners.push(d);
+    }
+
+    DESIGNERS.length = 0;
+    newDesigners.forEach(d => DESIGNERS.push(d));
+
+    // 人物タブが開いていれば即時再描画
+    if (document.getElementById('v-people')?.classList.contains('active')) {
+      renderDesigners();
+    }
+    console.log(`[DCE] デザイナー ${DESIGNERS.length} 名読み込み完了`);
+  } catch (e) {
+    console.warn('[DCE] デザイナーDB読み込み失敗:', e);
+  }
+}
+
 /* ════════════════════════════════════════════════════
    INIT
 ════════════════════════════════════════════════════ */
@@ -2692,6 +3035,7 @@ runTextSearch('');
 updateAIDot();
 // スプレッドシートから最新データを非同期取得
 loadSheetData();
+loadDesignersData();
 </script>
 </body>
 </html>
