@@ -1403,30 +1403,43 @@
 
     .designer-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
       gap: 1px;
       background: var(--border-lt);
       border-top: 1px solid var(--border-lt);
     }
     .designer-card {
       background: var(--bg);
-      padding: 1.5rem;
+      padding: 1.8rem 2rem;
       cursor: pointer;
       transition: background 0.15s;
-      display: flex; flex-direction: column; gap: 0.6rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto auto 1fr;
+      gap: 0.25rem 1.2rem;
     }
     .designer-card:hover { background: var(--bg-card); }
-    .dc-id { font-size: 0.55rem; letter-spacing: 0.2em; color: var(--border); text-transform: uppercase; }
-    .dc-name { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; line-height: 1.2; }
-    .dc-name-en { font-size: 0.65rem; letter-spacing: 0.1em; color: var(--text-sub); }
-    .dc-meta { font-size: 0.65rem; color: var(--text-sub); letter-spacing: 0.05em; }
-    .dc-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.2rem; }
-    .dc-tag { font-size: 0.55rem; letter-spacing: 0.1em; padding: 0.15rem 0.45rem; border: 1px solid var(--border-lt); color: var(--text-sub); border-radius: 2px; }
-    .dc-scores { display: flex; gap: 0.15rem; margin-top: 0.4rem; align-items: flex-end; height: 24px; }
-    .dc-score-bar { width: 100%; background: var(--border-lt); border-radius: 1px; position: relative; flex: 1; }
-    .dc-score-fill { position: absolute; bottom: 0; left: 0; right: 0; background: var(--text); border-radius: 1px; }
-    .dc-score-label { font-size: 0.5rem; color: var(--border); text-align: center; margin-top: 0.2rem; }
-    .dc-desc { font-size: 0.7rem; color: var(--text-sub); line-height: 1.6; }
+    .dc-id   { font-size: 0.52rem; letter-spacing: 0.2em; color: var(--border); text-transform: uppercase; grid-column: 1; }
+    .dc-name { font-family: 'Cormorant Garamond', serif; font-size: 1.45rem; line-height: 1.15; grid-column: 1; }
+    .dc-name-en { font-size: 0.63rem; letter-spacing: 0.1em; color: var(--text-sub); grid-column: 1; }
+    .dc-meta { font-size: 0.63rem; color: var(--text-sub); letter-spacing: 0.04em; grid-column: 1 / -1; margin-top: 0.1rem; }
+    .dc-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; grid-column: 1 / -1; margin-top: 0.4rem; }
+    .dc-tag  { font-size: 0.55rem; letter-spacing: 0.1em; padding: 0.15rem 0.45rem; border: 1px solid var(--border-lt); color: var(--text-sub); }
+    .dc-desc {
+      font-size: 0.72rem; color: var(--text-sub); line-height: 1.8;
+      grid-column: 1 / -1; margin-top: 0.6rem;
+      display: -webkit-box; -webkit-box-orient: vertical;
+      overflow: hidden; -webkit-line-clamp: 5;
+    }
+    .dc-axis-top {
+      grid-column: 2; grid-row: 2 / 4;
+      display: flex; flex-direction: column; gap: 3px;
+      align-self: start; padding-top: 0.2rem;
+    }
+    .dc-axis-pip {
+      width: 32px; height: 3px; background: var(--border-lt); border-radius: 1px; position: relative;
+    }
+    .dc-axis-pip-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--accent); border-radius: 1px; }
 
     /* ══ DESIGNER DETAIL PANEL ══ */
     #dsn-overlay { position: fixed; inset: 0; background: rgba(26,25,24,0.4); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
@@ -2764,25 +2777,28 @@ function renderDesigners() {
     return;
   }
   grid.innerHTML = list.map(d => {
-    const tags = (d.tags || '').split(/[,、／]/).map(t=>t.trim()).filter(Boolean).slice(0,4);
-    const scores = D_SCORE_KEYS.map((k,i) => {
-      const v = d['score_'+i] || 0;
-      return `<div style="flex:1;display:flex;flex-direction:column;gap:2px;">
-        <div class="dc-score-bar" style="height:${Math.max(4,v*0.2)}px;">
-          <div class="dc-score-fill" style="height:100%;"></div>
-        </div>
-      </div>`;
-    });
+    const tags = (d.tags || '').split(/[,、／]/).map(t=>t.trim()).filter(Boolean).slice(0, 5);
+    // 右端のスコアピップ（上位5軸を降順でミニ表示）
+    const topScores = D_SCORE_KEYS
+      .map((k, i) => ({ k, v: d['score_'+i] || 0 }))
+      .sort((a,b) => b.v - a.v).slice(0, 5);
+    const pips = topScores.map(({k, v}) =>
+      `<div class="dc-axis-pip" title="${k}: ${v}">
+        <div class="dc-axis-pip-fill" style="width:${v}%"></div>
+      </div>`
+    ).join('');
     const lifespan = [d.birth, d.death].filter(Boolean).join('–');
     const meta = [d.country, lifespan, d.activePeriod].filter(Boolean).join(' · ');
+    // 長い説明文を優先、なければ短い説明
+    const desc = d.descLong || d.descShort || '';
     return `<div class="designer-card" onclick="openDesigner('${d.id}')">
       <div class="dc-id">${d.id}</div>
       <div class="dc-name">${d.name || ''}</div>
+      <div class="dc-axis-top">${pips}</div>
       ${d.nameEn ? `<div class="dc-name-en">${d.nameEn}</div>` : ''}
       ${meta ? `<div class="dc-meta">${meta}</div>` : ''}
       ${tags.length ? `<div class="dc-tags">${tags.map(t=>`<span class="dc-tag">${t}</span>`).join('')}</div>` : ''}
-      <div class="dc-scores">${scores.join('')}</div>
-      ${d.descShort ? `<div class="dc-desc">${d.descShort}</div>` : ''}
+      ${desc ? `<div class="dc-desc">${desc}</div>` : ''}
     </div>`;
   }).join('');
 }
