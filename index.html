@@ -2247,12 +2247,16 @@ function openDetail(id) {
     }).join('')
   ).join('');
 
-  // デザイナーDBとのリンク検索
-  const relDesigner = DESIGNERS.find(d =>
-    d.name && chair.designer && (
-      chair.designer.includes(d.name) || d.name.includes(chair.designer.split('・')[0])
-    )
-  ) || (chair.id ? DESIGNERS.find(d => (d.chairIds||'').includes(chair.id)) : null);
+  // デザイナーDBとのリンク検索（優先順：椅子DB連携ID → 代表作 → 名前マッチ）
+  const chrId = chair.id;
+  const relDesigner =
+    DESIGNERS.find(d => (d.chairIds   || '').includes(chrId)) ||
+    DESIGNERS.find(d => (d.masterwork || '').includes(chrId)) ||
+    DESIGNERS.find(d =>
+      d.name && chair.designer && (
+        chair.designer.includes(d.name) || d.name.includes(chair.designer.split('・')[0])
+      )
+    );
 
   const designerDisplay = relDesigner
     ? `<span class="dp-designer-link" onclick="closeDetail();setTimeout(()=>openDesigner('${relDesigner.id}'),350)" title="${relDesigner.nameEn || ''}">${chair.designer}</span>`
@@ -2791,12 +2795,16 @@ function renderDesigners() {
     const meta = [d.country, lifespan, d.activePeriod].filter(Boolean).join(' · ');
     // 長い説明文を優先、なければ短い説明
     const desc = d.descLong || d.descShort || '';
+    // 代表作からCHR-IDを除いた表示テキスト（例: "No.14（1859）"）
+    const masterworkDisplay = (d.masterwork || '')
+      .split(/[,、]\s*/).map(s => s.replace(/^CHR-\d+\s*/, '').trim()).filter(Boolean).join(' · ');
     return `<div class="designer-card" onclick="openDesigner('${d.id}')">
       <div class="dc-id">${d.id}</div>
       <div class="dc-name">${d.name || ''}</div>
       <div class="dc-axis-top">${pips}</div>
       ${d.nameEn ? `<div class="dc-name-en">${d.nameEn}</div>` : ''}
       ${meta ? `<div class="dc-meta">${meta}</div>` : ''}
+      ${masterworkDisplay ? `<div class="dc-meta" style="color:var(--accent);margin-top:0.1rem;">代表作 · ${masterworkDisplay}</div>` : ''}
       ${tags.length ? `<div class="dc-tags">${tags.map(t=>`<span class="dc-tag">${t}</span>`).join('')}</div>` : ''}
       ${desc ? `<div class="dc-desc">${desc}</div>` : ''}
     </div>`;
@@ -2830,19 +2838,32 @@ function openDesigner(id) {
     </div>`;
   }).join('');
 
-  // related chairs
-  const relChairIds = (d.chairIds || '').split(/[,、\s]/).map(s=>s.trim()).filter(s=>s.startsWith('CHR-'));
+  // related chairs — 椅子DB連携ID と 代表作 の両方からCHR-IDを収集（重複排除）
+  const extractChrIds = str => (str || '').match(/CHR-\d+/g) || [];
+  const relChairIds = [...new Set([
+    ...extractChrIds(d.chairIds),
+    ...extractChrIds(d.masterwork),
+  ])];
+
+  // 代表作テキストから表示ラベルを引く（例: "CHR-001 No.14（1859）" → "No.14（1859）"）
+  const masterworkLabels = {};
+  (d.masterwork || '').split(/[,、]\s*/).forEach(seg => {
+    const m = seg.match(/^(CHR-\d+)\s+(.+)/);
+    if (m) masterworkLabels[m[1]] = m[2].trim();
+  });
+
   const relChairs = relChairIds.map(cid => {
     const c = CHAIRS.find(x => x.id === cid);
-    if (!c) return '';
+    const label = masterworkLabels[cid] || c?.name || cid;
+    const year  = c?.year || '';
     return `<div class="dsn-chair-row" onclick="closeDesigner();setTimeout(()=>openDetail('${cid}'),350)">
       <div style="flex:1">
-        <div class="dsn-chair-name">${c.name}</div>
-        <div class="dsn-chair-year">${c.year || ''} · ${c.id}</div>
+        <div class="dsn-chair-name">${label}</div>
+        <div class="dsn-chair-year">${year ? year + ' · ' : ''}${cid}${c ? '' : ' （椅子DBに未登録）'}</div>
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
-  }).filter(Boolean).join('');
+  }).join('');
 
   // influence
   const influenced = (d.influenced || '').trim();
@@ -3045,6 +3066,7 @@ async function loadDesignersData() {
     const influencedByC = col('影響を受けた人物');
     const influencedC   = col('影響を与えた人物');
     const movementCol   = col('関連運動');
+    const masterworkCol = col('代表作');
     const chairIdsCol   = col('椅子DB連携ID');
 
     // sensory score columns
@@ -3071,8 +3093,9 @@ async function loadDesignersData() {
         descLong:     descLCol >= 0    ? (r[descLCol]      || '').trim() : '',
         influencedBy: influencedByC>=0 ? (r[influencedByC] || '').trim() : '',
         influenced:   influencedC >= 0 ? (r[influencedC]   || '').trim() : '',
-        movement:     movementCol >= 0 ? (r[movementCol]   || '').trim() : '',
-        chairIds:     chairIdsCol >= 0 ? (r[chairIdsCol]   || '').trim() : '',
+        movement:     movementCol >= 0   ? (r[movementCol]   || '').trim() : '',
+        masterwork:   masterworkCol >= 0 ? (r[masterworkCol] || '').trim() : '',
+        chairIds:     chairIdsCol >= 0   ? (r[chairIdsCol]   || '').trim() : '',
       };
       scoreIdx.forEach((ci, ai) => {
         d['score_'+ai] = ci >= 0 && r[ci] !== '' ? (parseInt(r[ci]) || 0) : 0;
