@@ -1391,10 +1391,15 @@
     /* ══ PEOPLE VIEW ══ */
     #v-people.active { overflow-y: auto; }
 
-    .people-header { padding: 2.5rem 2rem 1rem; border-bottom: 1px solid var(--border-lt); }
-    .people-filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
-    .pf-btn { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.3rem 0.7rem; border: 1px solid var(--border-lt); background: none; color: var(--text-sub); cursor: pointer; border-radius: 2px; transition: all 0.2s; }
-    .pf-btn.active, .pf-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .people-header { padding: 2rem 2rem 0; border-bottom: 1px solid var(--border-lt); }
+    .people-filter-section { display: flex; align-items: baseline; gap: 0.8rem; padding: 0.6rem 0; border-top: 1px solid var(--border-lt); margin-top: 1rem; flex-wrap: wrap; }
+    .pf-label { font-size: 0.52rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--border); flex-shrink: 0; padding-top: 0.1rem; }
+    .pf-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .pf-btn { font-size: 0.6rem; letter-spacing: 0.1em; padding: 0.25rem 0.65rem; border: 1px solid var(--border-lt); background: none; color: var(--text-sub); cursor: pointer; transition: all 0.2s; }
+    .pf-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(155,139,117,0.06); }
+    .pf-btn:hover:not(.active) { border-color: var(--text-sub); color: var(--text); }
+    .dp-designer-link { cursor: pointer; border-bottom: 1px solid var(--border-lt); transition: border-color 0.2s, color 0.2s; }
+    .dp-designer-link:hover { color: var(--accent); border-color: var(--accent); }
 
     .designer-grid {
       display: grid;
@@ -1614,11 +1619,25 @@
       <div class="people-header">
         <div class="eyebrow">People</div>
         <div class="ph-title">デザイナー・建築家</div>
-        <div class="people-filter-bar" id="pf-bar">
-          <button class="pf-btn active" onclick="filterDesigners('all',this)">すべて</button>
-          <button class="pf-btn" onclick="filterDesigners('デザイナー',this)">デザイナー</button>
-          <button class="pf-btn" onclick="filterDesigners('建築家',this)">建築家</button>
-          <button class="pf-btn" onclick="filterDesigners('デザイナー・建築家',this)">複合</button>
+        <div class="people-filter-section">
+          <span class="pf-label">時代</span>
+          <div class="pf-group" id="pf-era">
+            <button class="pf-btn active" onclick="setEraFilter('all',this)">すべて</button>
+            <button class="pf-btn" onclick="setEraFilter('early',this)">近代初期</button>
+            <button class="pf-btn" onclick="setEraFilter('modernism',this)">モダニズム</button>
+            <button class="pf-btn" onclick="setEraFilter('midcentury',this)">ミッドセンチュリー</button>
+            <button class="pf-btn" onclick="setEraFilter('postmodern',this)">ポストモダン以降</button>
+          </div>
+        </div>
+        <div class="people-filter-section" style="border-top:none; padding-top:0; margin-top:0; padding-bottom: 1rem;">
+          <span class="pf-label">地域</span>
+          <div class="pf-group" id="pf-region">
+            <button class="pf-btn active" onclick="setRegionFilter('all',this)">すべて</button>
+            <button class="pf-btn" onclick="setRegionFilter('europe',this)">ヨーロッパ</button>
+            <button class="pf-btn" onclick="setRegionFilter('scandinavia',this)">スカンジナビア</button>
+            <button class="pf-btn" onclick="setRegionFilter('america',this)">アメリカ</button>
+            <button class="pf-btn" onclick="setRegionFilter('japan',this)">日本</button>
+          </div>
         </div>
       </div>
       <div class="designer-grid" id="designer-grid"><!-- JS --></div>
@@ -2222,13 +2241,13 @@ function openDetail(id) {
     )
   ) || (chair.id ? DESIGNERS.find(d => (d.chairIds||'').includes(chair.id)) : null);
 
+  const designerDisplay = relDesigner
+    ? `<span class="dp-designer-link" onclick="closeDetail();setTimeout(()=>openDesigner('${relDesigner.id}'),350)" title="${relDesigner.nameEn || ''}">${chair.designer}</span>`
+    : chair.designer;
+
   document.getElementById('dp-body').innerHTML = `
     <div class="dp-name">${chair.name}</div>
-    <div class="dp-meta">${chair.designer} · ${chair.year} · ${chair.origin}</div>
-    ${relDesigner ? `<button onclick="closeDetail();setTimeout(()=>openDesigner('${relDesigner.id}'),350)"
-      style="font-size:0.6rem;letter-spacing:0.12em;padding:0.2rem 0.65rem;border:1px solid var(--border-lt);background:none;color:var(--accent);cursor:pointer;margin-top:0.4rem;display:inline-block;">
-      → ${relDesigner.name} の人物詳細
-    </button>` : ''}
+    <div class="dp-meta">${designerDisplay} · ${chair.year} · ${chair.origin}</div>
 
     ${chairIllustHTML(chair)}
 
@@ -2692,15 +2711,53 @@ function goTo(name) {
    DESIGNER DATA
 ════════════════════════════════════════════════════ */
 let DESIGNERS = [];
-let DSN_FILTER = 'all';
+let DSN_ERA_FILTER    = 'all';
+let DSN_REGION_FILTER = 'all';
 const D_SCORE_KEYS = ['建築性','工業性','手仕事性','ミニマル性','装飾性','詩的性','緊張感','温度感','未来性','土着性'];
+
+const ERA_KEYWORDS = {
+  early:      ['Early Modern','Industrial','Arts and Crafts','Art Nouveau'],
+  modernism:  ['Modernism','Bauhaus','De Stijl'],
+  midcentury: ['Mid Century','Scandinavian Modern'],
+  postmodern: ['Post-Modern','Post Modern','Contemporary','Memphis','Deconstructivism'],
+};
+const SCANDINAVIA = ['フィンランド','デンマーク','スウェーデン','ノルウェー','アイスランド'];
+const EUROPE_EX_SCAN = ['ドイツ','フランス','イギリス','イタリア','オーストリア','スイス','オランダ','ベルギー','スペイン','チェコ'];
+
+function matchEra(d, era) {
+  if (era === 'all') return true;
+  const ap = d.activePeriod || '';
+  return (ERA_KEYWORDS[era] || []).some(kw => ap.includes(kw));
+}
+function matchRegion(d, region) {
+  if (region === 'all') return true;
+  const c = d.country || '';
+  if (region === 'scandinavia') return SCANDINAVIA.some(s => c.includes(s));
+  if (region === 'europe')      return EUROPE_EX_SCAN.some(s => c.includes(s));
+  if (region === 'america')     return c.includes('アメリカ') || c.includes('カナダ');
+  if (region === 'japan')       return c.includes('日本');
+  return true;
+}
+
+function setEraFilter(era, btn) {
+  DSN_ERA_FILTER = era;
+  document.querySelectorAll('#pf-era .pf-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderDesigners();
+}
+function setRegionFilter(region, btn) {
+  DSN_REGION_FILTER = region;
+  document.querySelectorAll('#pf-region .pf-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderDesigners();
+}
 
 function renderDesigners() {
   const grid = document.getElementById('designer-grid');
   if (!grid) return;
-  const list = DSN_FILTER === 'all'
-    ? DESIGNERS
-    : DESIGNERS.filter(d => (d.profession || '').includes(DSN_FILTER));
+  const list = DESIGNERS.filter(d =>
+    matchEra(d, DSN_ERA_FILTER) && matchRegion(d, DSN_REGION_FILTER)
+  );
   if (list.length === 0) {
     grid.innerHTML = '<div style="padding:3rem 2rem;color:var(--text-sub);font-size:0.8rem;">' +
       (DESIGNERS.length === 0 ? 'データを読み込み中…' : '該当なし') + '</div>';
@@ -2728,13 +2785,6 @@ function renderDesigners() {
       ${d.descShort ? `<div class="dc-desc">${d.descShort}</div>` : ''}
     </div>`;
   }).join('');
-}
-
-function filterDesigners(type, btn) {
-  DSN_FILTER = type;
-  document.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  renderDesigners();
 }
 
 function openDesigner(id) {
