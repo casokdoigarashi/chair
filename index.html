@@ -1388,6 +1388,49 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); }
 
+    /* ══ 構造解釈セクション ══ */
+    .sci-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-lt); }
+    .sci-head {
+      font-size: 0.52rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: #7A9BAA; margin-bottom: 1rem;
+    }
+    .sci-type-badge {
+      display: inline-block; font-size: 0.58rem; letter-spacing: 0.12em;
+      padding: 0.2rem 0.7rem; border: 1px solid #7A9BAA;
+      color: #7A9BAA; margin-bottom: 1rem;
+    }
+    .sci-explanation {
+      font-size: 0.8rem; line-height: 2; color: var(--text-sub);
+      margin-bottom: 1.5rem;
+    }
+    .sci-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1px; background: var(--border-lt);
+      border: 1px solid var(--border-lt); margin-bottom: 1.2rem;
+    }
+    .sci-cell {
+      background: var(--bg); padding: 1rem 1.1rem;
+    }
+    .sci-cell-label {
+      font-size: 0.52rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: #7A9BAA; margin-bottom: 0.4rem;
+    }
+    .sci-cell-text {
+      font-size: 0.72rem; line-height: 1.8; color: var(--text-sub);
+    }
+    .sci-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .sci-tag {
+      font-size: 0.57rem; letter-spacing: 0.1em; padding: 0.18rem 0.55rem;
+      border: 1px solid #7A9BAA22; color: #7A9BAA; background: #7A9BAA0d;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .sci-tag:hover { background: #7A9BAA22; }
+    /* 一覧カードのバッジ */
+    .br-struct-badge {
+      font-size: 0.52rem; letter-spacing: 0.1em; padding: 0.1rem 0.45rem;
+      border: 1px solid #7A9BAA44; color: #7A9BAA; white-space: nowrap;
+    }
+
     /* ══ PEOPLE VIEW ══ */
     #v-people.active { overflow-y: auto; }
 
@@ -2159,7 +2202,10 @@ function renderBrowse() {
     <div class="br-row" onclick="openDetail('${c.id}')">
       <div class="br-idx">${i+1}</div>
       ${chairThumbHTML(c)}
-      <div><div class="br-name">${c.name}</div></div>
+      <div>
+        <div class="br-name">${c.name}</div>
+        ${c.structuralType ? `<span class="br-struct-badge">${c.structuralType}</span>` : ''}
+      </div>
       <div class="br-designer">${c.designer}</div>
       <div class="br-year">${c.year}</div>
       <div class="br-origin">${c.origin}</div>
@@ -2190,7 +2236,14 @@ function runTextSearch(q) {
         c.name.toLowerCase().includes(qn)      ||
         c.designer.toLowerCase().includes(qn)  ||
         c.origin.includes(q)                   ||
-        String(c.year).includes(qn)
+        String(c.year).includes(qn)            ||
+        (c.structuralType || '').includes(q)   ||
+        (c.structuralKeywords || []).some(k => k.toLowerCase().includes(qn)) ||
+        (c.physicalFeatures || '').includes(q) ||
+        (c.geometricFeatures || '').includes(q)||
+        (c.materialProperties || '').includes(q)||
+        (c.ergonomicFeatures || '').includes(q)||
+        (c.scientificDesignExplanation || '').includes(q)
       );
 
   if(res.length === 0) {
@@ -2294,6 +2347,24 @@ function openDetail(id) {
 
     <div class="dp-desc">${chair.desc}</div>
 
+    ${(chair.scientificDesignExplanation || chair.structuralType || (chair.structuralKeywords||[]).length) ? `
+    <div class="sci-section">
+      <div class="sci-head">構造から読み解くデザイン</div>
+      ${chair.structuralType ? `<div class="sci-type-badge">${chair.structuralType}</div>` : ''}
+      ${chair.scientificDesignExplanation ? `<p class="sci-explanation">${chair.scientificDesignExplanation}</p>` : ''}
+      ${(chair.physicalFeatures || chair.geometricFeatures || chair.materialProperties || chair.ergonomicFeatures) ? `
+      <div class="sci-grid">
+        ${chair.physicalFeatures    ? `<div class="sci-cell"><div class="sci-cell-label">物理的特徴</div><div class="sci-cell-text">${chair.physicalFeatures}</div></div>` : ''}
+        ${chair.geometricFeatures   ? `<div class="sci-cell"><div class="sci-cell-label">幾何学的特徴</div><div class="sci-cell-text">${chair.geometricFeatures}</div></div>` : ''}
+        ${chair.materialProperties  ? `<div class="sci-cell"><div class="sci-cell-label">素材物性</div><div class="sci-cell-text">${chair.materialProperties}</div></div>` : ''}
+        ${chair.ergonomicFeatures   ? `<div class="sci-cell"><div class="sci-cell-label">身体工学的特徴</div><div class="sci-cell-text">${chair.ergonomicFeatures}</div></div>` : ''}
+      </div>` : ''}
+      ${(chair.structuralKeywords||[]).length ? `
+      <div class="sci-tags">
+        ${chair.structuralKeywords.map(k=>`<span class="sci-tag" onclick="runStructKeywordSearch('${k}')">${k}</span>`).join('')}
+      </div>` : ''}
+    </div>` : ''}
+
     <button class="btn-similar" onclick="searchSimilar('${chair.id}');closeDetail()">
       この椅子の感性で類似検索する →
     </button>`;
@@ -2305,6 +2376,15 @@ function openDetail(id) {
 function closeDetail() {
   document.getElementById('detail-panel').classList.remove('open');
   setTimeout(()=>document.getElementById('detail-overlay').classList.remove('open'), 420);
+}
+
+function runStructKeywordSearch(keyword) {
+  closeDetail();
+  setTimeout(() => {
+    goTo('text');
+    const el = document.getElementById('text-input');
+    if (el) { el.value = keyword; runTextSearch(keyword); }
+  }, 350);
 }
 
 function searchSimilar(id) {
@@ -2977,6 +3057,14 @@ async function loadSheetData() {
     const descCol     = col('批評文_統一版');
     const descFbCol   = col('批評文');
     const imageCol    = col('画像ファイル名', 'image', 'img', '画像');
+    // 物理・数学・構造解釈カラム（BB〜BH）
+    const physCol     = col('物理的特徴');
+    const geoCol      = col('幾何学的特徴');
+    const matPropCol  = col('素材物性');
+    const ergoCol     = col('身体工学的特徴');
+    const sciCol      = col('科学的デザイン解説');
+    const skwCol      = col('構造キーワード');
+    const stypeCol    = col('構造タイプ');
     const axisIdx = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮']
       .map(n => h.findIndex(c => c.startsWith(n)));
 
@@ -2995,6 +3083,16 @@ async function loadSheetData() {
         material: (r[materialCol] || '').trim(),
         desc:     ((r[descCol] || r[descFbCol] || '')).trim(),
         image:    imageCol >= 0 ? (r[imageCol] || '').trim() : '',
+        // 物理・数学・構造解釈
+        physicalFeatures:            physCol    >= 0 ? (r[physCol]    || '').trim() : '',
+        geometricFeatures:           geoCol     >= 0 ? (r[geoCol]     || '').trim() : '',
+        materialProperties:          matPropCol >= 0 ? (r[matPropCol] || '').trim() : '',
+        ergonomicFeatures:           ergoCol    >= 0 ? (r[ergoCol]    || '').trim() : '',
+        scientificDesignExplanation: sciCol     >= 0 ? (r[sciCol]     || '').trim() : '',
+        structuralKeywords:          skwCol     >= 0
+          ? (r[skwCol] || '').split(/[、,]/).map(s => s.trim()).filter(Boolean)
+          : [],
+        structuralType:              stypeCol   >= 0 ? (r[stypeCol]   || '').trim() : '',
       };
       axisIdx.forEach((ci, ai) => {
         chair[`axis${ai+1}`] = ci >= 0 && r[ci] !== '' ? (parseInt(r[ci]) || 50) : 50;
