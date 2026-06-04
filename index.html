@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@300;400;500;600&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1517,6 +1518,84 @@
     .dsn-chair-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; }
     .dsn-chair-year { font-size: 0.6rem; color: var(--text-sub); }
     .dsn-relation-list { font-size: 0.72rem; line-height: 1.8; color: var(--text-sub); }
+    .dsn-person-link { color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+    .dsn-person-link:hover { color: var(--text); }
+
+    /* ══ GRAPH VIEW ══ */
+    #v-graph { display: none; flex-direction: column; }
+    #v-graph.active { display: flex; }
+    .graph-header {
+      flex-shrink: 0;
+      padding: 1.4rem 2rem 0;
+      border-bottom: 1px solid var(--border-lt);
+      background: var(--bg);
+    }
+    .graph-header .eyebrow { margin-bottom: 0.3rem; }
+    .graph-header-title { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 400; margin-bottom: 0.8rem; }
+    .graph-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      align-items: baseline;
+      padding: 0.6rem 0 0.8rem;
+    }
+    .gc-group { display: flex; align-items: baseline; gap: 0.6rem; }
+    .gc-label { font-size: 0.52rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--border); flex-shrink: 0; }
+    .gc-btns { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .gc-btn {
+      font-size: 0.58rem; letter-spacing: 0.1em; padding: 0.22rem 0.6rem;
+      border: 1px solid var(--border-lt); background: none; color: var(--text-sub);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .gc-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(155,139,117,0.06); }
+    .gc-btn:hover:not(.active) { border-color: var(--text-sub); color: var(--text); }
+    .graph-search-wrap {
+      display: flex; align-items: center; gap: 0.5rem; margin-left: auto;
+    }
+    .graph-search {
+      font-family: 'Jost', sans-serif; font-size: 0.65rem; letter-spacing: 0.06em;
+      border: 1px solid var(--border-lt); background: var(--bg);
+      color: var(--text); padding: 0.28rem 0.75rem; width: 170px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .graph-search:focus { border-color: var(--accent); }
+    .graph-search::placeholder { color: var(--border); }
+
+    .graph-canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    #graph-svg { width: 100%; height: 100%; cursor: grab; }
+    #graph-svg:active { cursor: grabbing; }
+
+    /* graph legend */
+    .graph-legend {
+      position: absolute; bottom: 1.2rem; left: 1.5rem;
+      display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
+      font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    .gl-item { display: flex; align-items: center; gap: 0.35rem; color: var(--text-sub); }
+    .gl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* graph stats */
+    .graph-stats {
+      position: absolute; top: 0.8rem; right: 1rem;
+      font-size: 0.55rem; letter-spacing: 0.1em; color: var(--border);
+      text-align: right; pointer-events: none;
+    }
+
+    /* graph tooltip */
+    .graph-tooltip {
+      position: absolute; pointer-events: none;
+      background: var(--bg-card); border: 1px solid var(--border);
+      padding: 0.6rem 0.9rem; max-width: 200px;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .gt-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; margin-bottom: 0.15rem; }
+    .gt-meta { font-size: 0.58rem; color: var(--text-sub); letter-spacing: 0.04em; }
+    .gt-hint { font-size: 0.52rem; color: var(--border); margin-top: 0.4rem; letter-spacing: 0.1em; }
   </style>
 <!-- ローカル設定（config.jsが存在する場合のみ読み込む） -->
 <script src="config.js" onerror="void 0"></script>
@@ -1533,6 +1612,7 @@
       <button class="nav-btn" id="nb-browse"  onclick="goTo('browse')">全椅子一覧</button>
       <button class="nav-btn" id="nb-text"    onclick="goTo('text')">テキスト検索</button>
       <button class="nav-btn" id="nb-people"  onclick="goTo('people')">人物</button>
+      <button class="nav-btn" id="nb-graph"   onclick="goTo('graph')">相関図</button>
     </div>
     <div class="nav-tag"><span id="nav-count">30脚</span> · 15軸
       <span class="sync-dot" id="sync-dot" title="データ同期状態"></span>
@@ -1699,6 +1779,49 @@
       <div class="designer-grid" id="designer-grid"><!-- JS --></div>
     </div>
 
+    <!-- ══ GRAPH VIEW ══ -->
+    <div id="v-graph" class="view">
+      <div class="graph-header">
+        <div class="eyebrow">Network</div>
+        <div class="graph-header-title">デザイナー相関図</div>
+        <div class="graph-controls">
+          <div class="gc-group">
+            <span class="gc-label">時代</span>
+            <div class="gc-btns" id="gc-era">
+              <button class="gc-btn active" onclick="setGraphFilter('era','all',this)">すべて</button>
+              <button class="gc-btn" onclick="setGraphFilter('era','early',this)">近代初期</button>
+              <button class="gc-btn" onclick="setGraphFilter('era','modernism',this)">モダニズム</button>
+              <button class="gc-btn" onclick="setGraphFilter('era','midcentury',this)">ミッドセンチュリー</button>
+              <button class="gc-btn" onclick="setGraphFilter('era','postmodern',this)">ポストモダン以降</button>
+            </div>
+          </div>
+          <div class="gc-group">
+            <span class="gc-label">地域</span>
+            <div class="gc-btns" id="gc-region">
+              <button class="gc-btn active" onclick="setGraphFilter('region','all',this)">すべて</button>
+              <button class="gc-btn" onclick="setGraphFilter('region','europe',this)">ヨーロッパ</button>
+              <button class="gc-btn" onclick="setGraphFilter('region','scandinavia',this)">スカンジナビア</button>
+              <button class="gc-btn" onclick="setGraphFilter('region','america',this)">アメリカ</button>
+              <button class="gc-btn" onclick="setGraphFilter('region','japan',this)">日本</button>
+            </div>
+          </div>
+          <div class="graph-search-wrap">
+            <input class="graph-search" id="graph-search" type="text" placeholder="デザイナーを検索…" oninput="highlightGraphNode(this.value)">
+          </div>
+        </div>
+      </div>
+      <div class="graph-canvas-wrap">
+        <svg id="graph-svg"></svg>
+        <div class="graph-legend" id="graph-legend"></div>
+        <div class="graph-stats" id="graph-stats"></div>
+        <div class="graph-tooltip" id="graph-tooltip">
+          <div class="gt-name" id="gt-name"></div>
+          <div class="gt-meta" id="gt-meta"></div>
+          <div class="gt-hint">クリックで詳細を表示</div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- end .app-body -->
 </div><!-- end .app -->
 
@@ -1815,7 +1938,7 @@ const CHAIRS = [
    axis1:70,axis2:32,axis3:12,axis4:82,axis5:58,axis6:46,axis7:10,
    desc:"フォルムの解体と再構築。ポストモダンの問いを椅子で体現した実験作。機能より概念が先行する時代の産物。"},
 
-  {id:"CHR-023",name:"プルースト",designer:"アレッサンドロ・メンディーニ",year:1978,origin:"イタリア",
+  {id:"CHR-023",name:"プロウンチェア",designer:"アレッサンドロ・メンディーニ",year:1978,origin:"イタリア",
    axis1:62,axis2:54,axis3:78,axis4:24,axis5:62,axis6:72,axis7:20,
    desc:"マルセル・プルーストの肖像画を点描でそのまま椅子にした概念的作品。「椅子とは何か」という根本的問いに、絵画で答えた椅子の哲学書。"},
 
@@ -2783,14 +2906,14 @@ async function applyFreeSearch() {
    ROUTING
 ════════════════════════════════════════════════════ */
 function goTo(name) {
-  ['landing','sensory','browse','text','people'].forEach(v=>{
+  ['landing','sensory','browse','text','people','graph'].forEach(v=>{
     const el = document.getElementById('v-'+v);
     if(el) el.classList.remove('active');
   });
   const target = document.getElementById('v-'+name);
   if(target) target.classList.add('active');
 
-  ['sensory','browse','text','people'].forEach(v=>{
+  ['sensory','browse','text','people','graph'].forEach(v=>{
     const b = document.getElementById('nb-'+v);
     if(b) b.classList.toggle('active', v===name);
   });
@@ -2802,6 +2925,7 @@ function goTo(name) {
     setTimeout(()=>{ const el=document.getElementById('text-input'); if(el) el.focus(); }, 80);
   }
   if(name==='people')  { renderDesigners(); }
+  if(name==='graph')   { setTimeout(renderGraph, 50); }
 }
 
 /* ════════════════════════════════════════════════════
@@ -2875,9 +2999,17 @@ function renderDesigners() {
     const meta = [d.country, lifespan, d.activePeriod].filter(Boolean).join(' · ');
     // 長い説明文を優先、なければ短い説明
     const desc = d.descLong || d.descShort || '';
-    // 代表作からCHR-IDを除いた表示テキスト（例: "No.14（1859）"）
+    // 代表作 — 椅子DB名を優先、なければmasterwork文字列から抽出
     const masterworkDisplay = (d.masterwork || '')
-      .split(/[,、]\s*/).map(s => s.replace(/^CHR-\d+\s*/, '').trim()).filter(Boolean).join(' · ');
+      .split(/[,、／]\s*/).map(seg => {
+        const m = seg.match(/^(CHR-\d+)\s*(.*)/);
+        if (m) {
+          const chair = CHAIRS.find(x => x.id === m[1]);
+          if (chair) return chair.name; // 椅子DB名を優先
+          return m[2].trim() || m[1];  // 削除済みはテキスト部分
+        }
+        return seg.trim();
+      }).filter(Boolean).join(' · ');
     return `<div class="designer-card" onclick="openDesigner('${d.id}')">
       <div class="dc-id">${d.id}</div>
       <div class="dc-name">${d.name || ''}</div>
@@ -2889,6 +3021,22 @@ function renderDesigners() {
       ${desc ? `<div class="dc-desc">${desc}</div>` : ''}
     </div>`;
   }).join('');
+}
+
+// 人物テキストを解析し、デザイナーDBにマッチする名前をリンク化する
+function linkifyPeople(text) {
+  if (!text || !DESIGNERS.length) return text;
+  return text.split(/[、,]\s*/).map(name => {
+    name = name.trim();
+    if (!name) return '';
+    const matched = DESIGNERS.find(d =>
+      d.name && (d.name.includes(name) || name.includes(d.name))
+    );
+    if (matched) {
+      return `<span class="dsn-person-link" onclick="openDesigner('${matched.id}')">${name}</span>`;
+    }
+    return name;
+  }).filter(Boolean).join('、');
 }
 
 function openDesigner(id) {
@@ -2925,30 +3073,34 @@ function openDesigner(id) {
     ...extractChrIds(d.masterwork),
   ])];
 
-  // 代表作テキストから表示ラベルを引く（例: "CHR-001 No.14（1859）" → "No.14（1859）"）
+  // 代表作テキストから補助ラベルを引く（椅子DBに存在しない場合のフォールバック用）
   const masterworkLabels = {};
-  (d.masterwork || '').split(/[,、]\s*/).forEach(seg => {
+  (d.masterwork || '').split(/[,、／]\s*/).forEach(seg => {
     const m = seg.match(/^(CHR-\d+)\s+(.+)/);
     if (m) masterworkLabels[m[1]] = m[2].trim();
   });
 
   const relChairs = relChairIds.map(cid => {
     const c = CHAIRS.find(x => x.id === cid);
-    const label = masterworkLabels[cid] || c?.name || cid;
-    const year  = c?.year || '';
+    if (!c) return ''; // 椅子DBから削除済みのIDはスキップ
+    // 椅子DB名を優先表示（masterwork側のラベルは旧名の可能性あり）
+    const label = c.name || masterworkLabels[cid] || cid;
+    const year  = c.year || '';
     return `<div class="dsn-chair-row" onclick="closeDesigner();setTimeout(()=>openDetail('${cid}'),350)">
       <div style="flex:1">
         <div class="dsn-chair-name">${label}</div>
-        <div class="dsn-chair-year">${year ? year + ' · ' : ''}${cid}${c ? '' : ' （椅子DBに未登録）'}</div>
+        <div class="dsn-chair-year">${year ? year + ' · ' : ''}${cid}</div>
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
   }).join('');
 
-  // influence
-  const influenced = (d.influenced || '').trim();
-  const influencedBy = (d.influencedBy || '').trim();
-  const movement = (d.movement || '').trim();
+  // influence / school / collaborators
+  const influenced    = (d.influenced    || '').trim();
+  const influencedBy  = (d.influencedBy  || '').trim();
+  const movement      = (d.movement      || '').trim();
+  const school        = (d.school        || '').trim();
+  const collaborators = (d.collaborators || '').trim();
 
   body.innerHTML = `
     ${d.profession ? `<div class="dsn-profession">${d.profession}</div>` : ''}
@@ -2970,12 +3122,20 @@ function openDesigner(id) {
       <div class="dsn-chair-list">${relChairs}</div>
     ` : ''}
 
-    ${(influenced || influencedBy || movement) ? `
+    ${school ? `
+      <div class="dsn-section-head">所属・学校</div>
+      <div class="dsn-relation-list">
+        <div>${school.split(/[、,]\s*/).map(s=>`<span class="dsn-tag" style="margin-right:0.4rem">${s}</span>`).join('')}</div>
+      </div>
+    ` : ''}
+
+    ${(influenced || influencedBy || movement || collaborators) ? `
       <div class="dsn-section-head">人物・運動との関係</div>
       <div class="dsn-relation-list">
-        ${influencedBy ? `<div>影響を受けた人物 : ${influencedBy}</div>` : ''}
-        ${influenced   ? `<div>影響を与えた人物 : ${influenced}</div>` : ''}
-        ${movement     ? `<div>関連運動 : ${movement}</div>` : ''}
+        ${influencedBy  ? `<div>影響を受けた人物 : ${linkifyPeople(influencedBy)}</div>` : ''}
+        ${influenced    ? `<div>影響を与えた人物 : ${linkifyPeople(influenced)}</div>` : ''}
+        ${collaborators ? `<div>協働者 : ${linkifyPeople(collaborators)}</div>` : ''}
+        ${movement      ? `<div>関連運動 : ${movement}</div>` : ''}
       </div>
     ` : ''}
   `;
@@ -3161,11 +3321,13 @@ async function loadDesignersData() {
     const tagsCol       = col('感性タグ');
     const descSCol      = col('AI説明文（短）');
     const descLCol      = col('AI説明文（長）');
-    const influencedByC = col('影響を受けた人物');
-    const influencedC   = col('影響を与えた人物');
-    const movementCol   = col('関連運動');
-    const masterworkCol = col('代表作');
-    const chairIdsCol   = col('椅子DB連携ID');
+    const influencedByC  = col('影響を受けた人物');
+    const influencedC    = col('影響を与えた人物');
+    const movementCol    = col('関連運動');
+    const masterworkCol  = col('代表作');
+    const chairIdsCol    = col('椅子DB連携ID');
+    const schoolCol      = col('所属・学校', '所属', '学校');
+    const collaboratorsC = col('協働者');
 
     // sensory score columns
     const scoreIdx = D_SCORE_KEYS.map(k => h.findIndex(c => c.includes(k)));
@@ -3189,11 +3351,13 @@ async function loadDesignersData() {
         tags:         tagsCol >= 0     ? (r[tagsCol]       || '').trim() : '',
         descShort:    descSCol >= 0    ? (r[descSCol]      || '').trim() : '',
         descLong:     descLCol >= 0    ? (r[descLCol]      || '').trim() : '',
-        influencedBy: influencedByC>=0 ? (r[influencedByC] || '').trim() : '',
-        influenced:   influencedC >= 0 ? (r[influencedC]   || '').trim() : '',
-        movement:     movementCol >= 0   ? (r[movementCol]   || '').trim() : '',
-        masterwork:   masterworkCol >= 0 ? (r[masterworkCol] || '').trim() : '',
-        chairIds:     chairIdsCol >= 0   ? (r[chairIdsCol]   || '').trim() : '',
+        influencedBy:  influencedByC>=0  ? (r[influencedByC] || '').trim() : '',
+        influenced:    influencedC >= 0  ? (r[influencedC]   || '').trim() : '',
+        movement:      movementCol >= 0  ? (r[movementCol]   || '').trim() : '',
+        masterwork:    masterworkCol >= 0? (r[masterworkCol] || '').trim() : '',
+        chairIds:      chairIdsCol >= 0  ? (r[chairIdsCol]   || '').trim() : '',
+        school:        schoolCol >= 0    ? (r[schoolCol]     || '').trim() : '',
+        collaborators: collaboratorsC>=0 ? (r[collaboratorsC]|| '').trim() : '',
       };
       scoreIdx.forEach((ci, ai) => {
         d['score_'+ai] = ci >= 0 && r[ci] !== '' ? (parseInt(r[ci]) || 0) : 0;
@@ -3204,14 +3368,419 @@ async function loadDesignersData() {
     DESIGNERS.length = 0;
     newDesigners.forEach(d => DESIGNERS.push(d));
 
-    // 人物タブが開いていれば即時再描画
+    // タブが開いていれば即時再描画
     if (document.getElementById('v-people')?.classList.contains('active')) {
       renderDesigners();
+    }
+    if (document.getElementById('v-graph')?.classList.contains('active')) {
+      renderGraph();
     }
     console.log(`[DCE] デザイナー ${DESIGNERS.length} 名読み込み完了`);
   } catch (e) {
     console.warn('[DCE] デザイナーDB読み込み失敗:', e);
   }
+}
+
+/* ════════════════════════════════════════════════════
+   DESIGNER GRAPH
+════════════════════════════════════════════════════ */
+let GRAPH_ERA_FILTER    = 'all';
+let GRAPH_REGION_FILTER = 'all';
+let graphSimulation     = null;
+
+const ERA_COLORS = {
+  early:      '#B5956A',
+  modernism:  '#7A9BAA',
+  midcentury: '#8AAF8A',
+  postmodern: '#AA8A9B',
+  unknown:    '#C5BAA8',
+};
+const ERA_LABELS = {
+  early:      '近代初期',
+  modernism:  'モダニズム',
+  midcentury: 'ミッドセンチュリー',
+  postmodern: 'ポストモダン以降',
+  unknown:    'その他',
+};
+
+function getDesignerEra(d) {
+  for (const [era, kws] of Object.entries(ERA_KEYWORDS)) {
+    if ((kws || []).some(kw => (d.activePeriod || '').includes(kw))) return era;
+  }
+  return 'unknown';
+}
+
+function setGraphFilter(type, val, btn) {
+  if (type === 'era') {
+    GRAPH_ERA_FILTER = val;
+    document.querySelectorAll('#gc-era .gc-btn').forEach(b => b.classList.remove('active'));
+  }
+  if (type === 'region') {
+    GRAPH_REGION_FILTER = val;
+    document.querySelectorAll('#gc-region .gc-btn').forEach(b => b.classList.remove('active'));
+  }
+  if (btn) btn.classList.add('active');
+  renderGraph();
+}
+
+function highlightGraphNode(query) {
+  const q = (query || '').trim().toLowerCase();
+  d3.selectAll('.g-node').each(function(d) {
+    const match = q && (d.name || '').toLowerCase().includes(q);
+    d3.select(this).select('circle')
+      .attr('stroke',       match ? '#C8A96E' : 'none')
+      .attr('stroke-width', match ? 3 : 0);
+    d3.select(this).select('text')
+      .attr('opacity', q ? (match ? 1 : 0.15) : null);
+  });
+  d3.selectAll('.g-link').attr('opacity', q ? 0.08 : null);
+}
+
+/* ────────────────────────────────────────────────────
+   関係シート読み込み
+──────────────────────────────────────────────────── */
+let RELATIONS = []; // { sourceId, targetId, type: 'influence'|'collab'|'contemporary' }
+
+async function loadRelationsData() {
+  try {
+    // gid=663654865 が「関係」シート
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=663654865`;
+    const res  = await fetch(url);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (!rows.length) return;
+
+    const h = rows[0].map(c => c.trim());
+    const col = name => h.findIndex(c => c.includes(name));
+    const aIdC  = col('人物A_ID');
+    const bIdC  = col('人物B_ID');
+    const bNameC= col('人物B');
+    const relC  = col('関係');
+
+    const newRels = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const aId  = aIdC  >= 0 ? (r[aIdC]  || '').trim() : '';
+      const bId  = bIdC  >= 0 ? (r[bIdC]  || '').trim() : '';
+      const bName= bNameC>= 0 ? (r[bNameC]|| '').trim() : '';
+      const rel  = relC  >= 0 ? (r[relC]  || '').trim() : '';
+      if (!aId || !rel || (!bId && !bName)) continue;
+
+      // 関係の種別を正規化
+      let type = 'contemporary';
+      if (rel.includes('影響を与えた'))  type = 'influence';   // A → B
+      if (rel.includes('影響を受けた'))  type = 'influenced';  // A ← B (= B → A)
+      if (rel.includes('協働'))          type = 'collab';
+      if (rel.includes('同時代'))        type = 'contemporary';
+
+      newRels.push({ aId, bId, bName, type });
+    }
+    RELATIONS.length = 0;
+    newRels.forEach(r => RELATIONS.push(r));
+
+    console.log(`[DCE] 関係シート ${RELATIONS.length} 件読み込み完了`);
+
+    // 相関図が開いていれば再描画
+    if (document.getElementById('v-graph')?.classList.contains('active')) {
+      renderGraph();
+    }
+  } catch(e) {
+    console.warn('[DCE] 関係シート読み込み失敗:', e);
+  }
+}
+
+function buildGraphData() {
+  const filtered = DESIGNERS.filter(d =>
+    matchEra(d, GRAPH_ERA_FILTER) && matchRegion(d, GRAPH_REGION_FILTER)
+  );
+  const nodeIds = new Set(filtered.map(d => d.id));
+
+  // ID または名前 → filtered 内の DES-ID (fuzzy)
+  function resolveId(id, name) {
+    if (id && nodeIds.has(id)) return id;
+    // ID があるが filtered 外（時代・地域フィルターで除外）
+    if (id && DESIGNERS.find(d => d.id === id)) return null;
+    // 名前で fuzzy match
+    const n = (name || '').trim();
+    if (!n) return null;
+    const exact = DESIGNERS.find(d => d.name === n);
+    if (exact) return nodeIds.has(exact.id) ? exact.id : null;
+    const fuzzy = DESIGNERS.find(d => d.name && (d.name.includes(n) || n.includes(d.name)));
+    return (fuzzy && nodeIds.has(fuzzy.id)) ? fuzzy.id : null;
+  }
+  // 後方互換：名前のみ版
+  function resolveName(raw) { return resolveId('', raw); }
+
+  const edgeSet = new Set();
+  const links   = [];
+
+  // ① Designerシートの影響・協働データ（後方互換）
+  filtered.forEach(d => {
+    (d.influenced || '').split(/[、,]\s*/).forEach(raw => {
+      const tid = resolveName(raw);
+      if (tid && tid !== d.id) {
+        const key = `${d.id}→${tid}`;
+        if (!edgeSet.has(key)) { edgeSet.add(key); links.push({ source: d.id, target: tid, type: 'influence' }); }
+      }
+    });
+    (d.collaborators || '').split(/[、,]\s*/).forEach(raw => {
+      const tid = resolveName(raw);
+      if (tid && tid !== d.id) {
+        const key = [d.id, tid].sort().join('↔');
+        if (!edgeSet.has(key)) { edgeSet.add(key); links.push({ source: d.id, target: tid, type: 'collab' }); }
+      }
+    });
+  });
+
+  // ② 関係シートのデータを追加（こちらが主データ）
+  RELATIONS.forEach(rel => {
+    const sid = nodeIds.has(rel.aId) ? rel.aId : null;
+    const tid = resolveId(rel.bId, rel.bName);
+    if (!sid || !tid || sid === tid) return;
+
+    if (rel.type === 'influence') {
+      // A → B
+      const key = `${sid}→${tid}`;
+      if (!edgeSet.has(key)) { edgeSet.add(key); links.push({ source: sid, target: tid, type: 'influence' }); }
+    } else if (rel.type === 'influenced') {
+      // A ← B つまり B → A
+      const key = `${tid}→${sid}`;
+      if (!edgeSet.has(key)) { edgeSet.add(key); links.push({ source: tid, target: sid, type: 'influence' }); }
+    } else if (rel.type === 'collab') {
+      const key = [sid, tid].sort().join('↔');
+      if (!edgeSet.has(key)) { edgeSet.add(key); links.push({ source: sid, target: tid, type: 'collab' }); }
+    } else {
+      // 同時代
+      const key = [sid, tid].sort().join('≈');
+      if (!edgeSet.has(key)) { edgeSet.add(key); links.push({ source: sid, target: tid, type: 'contemporary' }); }
+    }
+  });
+
+  // degree for sizing
+  const degree = {};
+  filtered.forEach(d => { degree[d.id] = 0; });
+  links.forEach(l => {
+    const s = typeof l.source === 'object' ? l.source.id : l.source;
+    const t = typeof l.target === 'object' ? l.target.id : l.target;
+    degree[s] = (degree[s] || 0) + 1;
+    degree[t] = (degree[t] || 0) + 1;
+  });
+  filtered.forEach(d => { d._degree = degree[d.id] || 0; });
+
+  return { nodes: filtered, links };
+}
+
+function renderGraph() {
+  if (!document.getElementById('v-graph')?.classList.contains('active')) return;
+  if (typeof d3 === 'undefined') { console.warn('[DCE] D3.js not loaded'); return; }
+
+  const wrap = document.querySelector('.graph-canvas-wrap');
+  if (!wrap) return;
+
+  // Stop previous simulation
+  if (graphSimulation) { graphSimulation.stop(); graphSimulation = null; }
+
+  const svg = d3.select('#graph-svg');
+  svg.selectAll('*').remove();
+
+  const W = wrap.clientWidth  || 800;
+  const H = wrap.clientHeight || 600;
+
+  if (DESIGNERS.length === 0) {
+    svg.append('text')
+      .attr('x', W / 2).attr('y', H / 2)
+      .attr('text-anchor', 'middle')
+      .attr('font-family', "'Jost', sans-serif")
+      .attr('font-size', '13px')
+      .attr('fill', '#C5BAA8')
+      .text('データを読み込み中…');
+    return;
+  }
+
+  const { nodes, links } = buildGraphData();
+
+  // Legend
+  const usedEras = [...new Set(nodes.map(getDesignerEra))];
+  document.getElementById('graph-legend').innerHTML = usedEras.map(era =>
+    `<div class="gl-item"><div class="gl-dot" style="background:${ERA_COLORS[era]}"></div>${ERA_LABELS[era]}</div>`
+  ).join('') +
+  `<div class="gl-item" style="margin-left:0.5rem">
+    <svg width="24" height="10" viewBox="0 0 24 10"><line x1="0" y1="5" x2="20" y2="5" stroke="#9B8B75" stroke-width="1.2" marker-end="url(#arr-legend-i)"/><defs><marker id="arr-legend-i" viewBox="0 -3 6 6" refX="6" refY="0" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,-3L6,0L0,3" fill="#9B8B75"/></marker></defs></svg>
+    影響
+  </div>
+  <div class="gl-item">
+    <svg width="24" height="10" viewBox="0 0 24 10"><line x1="0" y1="5" x2="22" y2="5" stroke="#7A9BAA" stroke-width="1" stroke-dasharray="4,3"/></svg>
+    協働
+  </div>
+  <div class="gl-item">
+    <svg width="24" height="10" viewBox="0 0 24 10"><line x1="0" y1="5" x2="22" y2="5" stroke="#C5BAA8" stroke-width="0.8" stroke-dasharray="2,4"/></svg>
+    同時代
+  </div>`;
+
+  document.getElementById('graph-stats').textContent =
+    `${nodes.length} 人 · ${links.filter(l=>l.type==='influence').length} 影響 · ${links.filter(l=>l.type==='collab').length} 協働 · ${links.filter(l=>l.type==='contemporary').length} 同時代`;
+
+  // Radius scale
+  const maxDeg = d3.max(nodes, d => d._degree) || 1;
+  const rScale = d3.scaleSqrt().domain([0, maxDeg]).range([4, 20]);
+
+  // SVG defs — arrow markers
+  const defs = svg.append('defs');
+  defs.append('marker')
+    .attr('id', 'arr-influence')
+    .attr('viewBox', '0 -4 8 8').attr('refX', 8).attr('refY', 0)
+    .attr('markerWidth', 5).attr('markerHeight', 5).attr('orient', 'auto')
+    .append('path').attr('d', 'M0,-4L8,0L0,4').attr('fill', '#9B8B75').attr('opacity', 0.6);
+
+  // Zoom layer（後でzoomHandlerに置き換えるのでここでは root だけ作る）
+  const root = svg.append('g').attr('class', 'graph-root');
+
+  // Links
+  const strokeColor = d => {
+    if (d.type === 'influence')    return '#9B8B75';
+    if (d.type === 'collab')       return '#7A9BAA';
+    if (d.type === 'contemporary') return '#C5BAA8';
+    return '#C5BAA8';
+  };
+  const strokeOpacity = d => {
+    if (d.type === 'influence')    return 0.55;
+    if (d.type === 'collab')       return 0.6;
+    if (d.type === 'contemporary') return 0.25;
+    return 0.2;
+  };
+  const strokeWidth = d => {
+    if (d.type === 'influence')    return 1.2;
+    if (d.type === 'collab')       return 1.0;
+    if (d.type === 'contemporary') return 0.6;
+    return 0.6;
+  };
+  const strokeDash = d => {
+    if (d.type === 'collab')       return '4,3';
+    if (d.type === 'contemporary') return '2,4';
+    return null;
+  };
+
+  const linkSel = root.append('g').attr('class', 'links')
+    .selectAll('line')
+    .data(links)
+    .join('line')
+    .attr('class', 'g-link')
+    .attr('stroke',           strokeColor)
+    .attr('stroke-opacity',   strokeOpacity)
+    .attr('stroke-width',     strokeWidth)
+    .attr('stroke-dasharray', strokeDash)
+    .attr('marker-end',       d => d.type === 'influence' ? 'url(#arr-influence)' : null);
+
+  // Nodes
+  const nodeSel = root.append('g').attr('class', 'nodes')
+    .selectAll('g')
+    .data(nodes, d => d.id)
+    .join('g')
+    .attr('class', 'g-node')
+    .style('cursor', 'pointer')
+    .call(
+      d3.drag()
+        .on('start', (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+        .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
+        .on('end',   (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
+    )
+    .on('click', (e, d) => { e.stopPropagation(); openDesigner(d.id); })
+    .on('mouseover', function(e, d) {
+      const tt = document.getElementById('graph-tooltip');
+      document.getElementById('gt-name').textContent = d.name || '';
+      document.getElementById('gt-meta').textContent =
+        [d.country, d.activePeriod, d.school].filter(Boolean).join(' · ');
+      tt.style.opacity = '1';
+      const rect = wrap.getBoundingClientRect();
+      tt.style.left = Math.min(e.clientX - rect.left + 14, W - 220) + 'px';
+      tt.style.top  = Math.max(e.clientY - rect.top  - 10, 0) + 'px';
+      // dim others
+      nodeSel.select('circle').attr('fill-opacity', n => n.id === d.id ? 1 : 0.3);
+      linkSel.attr('stroke-opacity', l => {
+        const s = typeof l.source === 'object' ? l.source.id : l.source;
+        const t = typeof l.target === 'object' ? l.target.id : l.target;
+        return (s === d.id || t === d.id) ? 0.9 : 0.05;
+      });
+    })
+    .on('mousemove', function(e) {
+      const tt  = document.getElementById('graph-tooltip');
+      const rect = wrap.getBoundingClientRect();
+      tt.style.left = Math.min(e.clientX - rect.left + 14, W - 220) + 'px';
+      tt.style.top  = Math.max(e.clientY - rect.top  - 10, 0) + 'px';
+    })
+    .on('mouseout', function() {
+      document.getElementById('graph-tooltip').style.opacity = '0';
+      nodeSel.select('circle').attr('fill-opacity', 0.85);
+      linkSel.attr('stroke-opacity', strokeOpacity);
+    });
+
+  nodeSel.append('circle')
+    .attr('r',            d => rScale(d._degree))
+    .attr('fill',         d => ERA_COLORS[getDesignerEra(d)])
+    .attr('fill-opacity', 0.85)
+    .attr('stroke',       'none');
+
+  // Labels — show for connected nodes
+  const labelThreshold = maxDeg >= 6 ? 3 : maxDeg >= 3 ? 2 : 1;
+  nodeSel.append('text')
+    .attr('dy',           d => rScale(d._degree) + 10)
+    .attr('text-anchor',  'middle')
+    .attr('font-family',  "'Jost', 'Hiragino Sans', sans-serif")
+    .attr('font-size',    '8.5px')
+    .attr('font-weight',  d => d._degree >= labelThreshold + 3 ? '500' : '300')
+    .attr('fill',         '#1A1918')
+    .attr('pointer-events', 'none')
+    .attr('opacity',      d => d._degree >= labelThreshold ? 0.75 : 0)
+    .text(d => d.name || '');
+
+  // ズームハンドラを保持（auto-fit で使う）
+  const zoomHandler = d3.zoom().scaleExtent([0.1, 5])
+    .on('zoom', e => root.attr('transform', e.transform));
+  svg.call(zoomHandler);
+
+  // Force simulation
+  const sim = d3.forceSimulation(nodes)
+    .force('link',      d3.forceLink(links).id(d => d.id).distance(d => d.type === 'collab' ? 55 : 80).strength(0.4))
+    .force('charge',    d3.forceManyBody().strength(d => -80 - d._degree * 15))
+    .force('center',    d3.forceCenter(W / 2, H / 2).strength(0.08))
+    .force('x',         d3.forceX(W / 2).strength(0.04))
+    .force('y',         d3.forceY(H / 2).strength(0.04))
+    .force('collision', d3.forceCollide().radius(d => rScale(d._degree) + 8))
+    .on('tick', () => {
+      linkSel
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => {
+          if (d.type !== 'influence') return d.target.x;
+          const r  = rScale(d.target._degree) + 6;
+          const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.target.x - (dx / dist) * r;
+        })
+        .attr('y2', d => {
+          if (d.type !== 'influence') return d.target.y;
+          const r  = rScale(d.target._degree) + 6;
+          const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          return d.target.y - (dy / dist) * r;
+        });
+      nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+    })
+    .on('end', () => {
+      // シミュレーション完了後、全ノードが収まるよう自動フィット
+      if (!nodes.length) return;
+      const pad = 60;
+      const xs = nodes.map(d => d.x), ys = nodes.map(d => d.y);
+      const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad;
+      const y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+      const scale = Math.min(0.95, Math.min(W / (x1 - x0), H / (x1 - y0 < 10 ? 1 : y1 - y0)));
+      const tx = W / 2 - scale * (x0 + x1) / 2;
+      const ty = H / 2 - scale * (y0 + y1) / 2;
+      svg.transition().duration(600)
+        .call(zoomHandler.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+    });
+
+  graphSimulation = sim;
 }
 
 /* ════════════════════════════════════════════════════
@@ -3223,6 +3792,7 @@ updateAIDot();
 // スプレッドシートから最新データを非同期取得
 loadSheetData();
 loadDesignersData();
+loadRelationsData();
 </script>
 </body>
 </html>
