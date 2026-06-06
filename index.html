@@ -3386,6 +3386,102 @@ async function loadDesignersData() {
   }
 }
 
+/* ────────────────────────────────────────────────────
+   椅子データ読み込み
+──────────────────────────────────────────────────── */
+async function loadChairsData() {
+  try {
+    const url = GVIZ_BASE + encodeURIComponent('椅子データ収集');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('empty');
+
+    const h = rows[0];
+    const col = (...names) => {
+      for (const n of names) {
+        const i = h.findIndex(c => c.includes(n));
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+
+    const idCol       = col('CHR_ID', 'ID');
+    const nameCol     = col('日本語名', '名前');
+    const designerCol = col('デザイナー');
+    const yearCol     = col('制作年', '年');
+    const countryCol  = col('国');
+    const materialCol = col('素材');
+    const geomCol     = col('幾何学的特徴');
+    const ergoCol     = col('身体工学的特徴');
+    const contextCol  = col('現在性');
+
+    // axis columns
+    const axisKeys = ['axis1', 'axis2', 'axis3', 'axis4', 'axis5', 'axis6', 'axis7'];
+    const axisCols = axisKeys.map(k => col(k));
+
+    const newChairs = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const id = (r[idCol] || '').trim();
+      if (!id.startsWith('CHR-')) continue;
+
+      const c = {
+        id,
+        name:     (r[nameCol]     || '').trim(),
+        designer: designerCol >= 0 ? (r[designerCol] || '').trim() : '',
+        year:     yearCol >= 0     ? parseInt(r[yearCol]) || 0 : 0,
+        origin:   countryCol >= 0  ? (r[countryCol]  || '').trim() : '',
+        material: materialCol >= 0 ? (r[materialCol] || '').trim() : '',
+        desc:     contextCol >= 0  ? (r[contextCol]  || '').trim() : '',
+      };
+
+      // axis values
+      axisCols.forEach((colIdx, idx) => {
+        c['axis' + (idx + 1)] = colIdx >= 0 && r[colIdx] !== ''
+          ? (parseInt(r[colIdx]) || 0)
+          : 0;
+      });
+
+      newChairs.push(c);
+    }
+
+    // 既存CHAIRSの内容を新しいデータで上書き
+    // 既存のハードコードデータは保持し、新しいデータで追加/更新
+    const existingIds = new Set(CHAIRS.map(c => c.id));
+    const newIds = new Set(newChairs.map(c => c.id));
+
+    // 既存データ（CHR-001〜CHR-363）は保持し、新規・更新分のみ処理
+    for (const chair of newChairs) {
+      const existing = CHAIRS.find(c => c.id === chair.id);
+      if (existing) {
+        // 既存データを更新
+        Object.assign(existing, chair);
+      } else {
+        // 新規データを追加
+        CHAIRS.push(chair);
+      }
+    }
+
+    // シーケンス番号を再計算
+    CHAIRS.forEach((c, i) => { c.seq = i; Object.assign(c, EXTRA_AXES[c.id] || {}); });
+
+    // ビューが開いていれば再描画
+    if (document.getElementById('v-browse')?.classList.contains('active')) {
+      renderBrowse();
+    }
+    if (document.getElementById('v-sensory')?.classList.contains('active')) {
+      renderSensory();
+    }
+
+    console.log(`[DCE] 椅子データ ${CHAIRS.length} 脚読み込み完了`);
+  } catch (e) {
+    console.warn('[DCE] 椅子データ読み込み失敗:', e);
+    console.log('（ハードコードされたデータを使用）');
+  }
+}
+
 /* ════════════════════════════════════════════════════
    DESIGNER GRAPH
 ════════════════════════════════════════════════════ */
@@ -3797,6 +3893,7 @@ updateAIDot();
 // スプレッドシートから最新データを非同期取得
 loadSheetData();
 loadDesignersData();
+loadChairsData();
 loadRelationsData();
 </script>
 </body>
